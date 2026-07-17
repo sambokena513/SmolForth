@@ -50,8 +50,6 @@ sub %1, r15
 ; user input test, we prompt for input once and try to execute the word
 ; if the user types "GREET", they should see the greeting message,
 ; otherwise it'll probably segfault or smth
-call REFILL
-call CLEAR
 call WORD_
 call FIND
 jmp EXECUTE
@@ -377,9 +375,22 @@ db 0
 db "CLEAR", 0
 
 
+; INTERPRET is the main outer interpreter loop
+INTERPRET:
+.loop:
+call WORD_
+call FIND
+call EXECUTE
+jmp .loop
+INTERPRET_entry:
+dd CLEAR_entry
+dd INTERPRET
+db 0
+db "INTERPRET", 0
+
 ; interpreter variables
 
-latest_def dd CLEAR_entry ; image-relative address, resPTR it before dereferencing!
+latest_def dd INTERPRET_entry ; image-relative address, resPTR it before dereferencing!
 here dd HERE_START ; also image-relative
 state db 0 ; 0 = interpreting, 1 = compiling
 scan_start db 0 ; used to restore WORD parse state, copy of tib_idx
