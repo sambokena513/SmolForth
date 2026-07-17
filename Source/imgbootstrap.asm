@@ -44,8 +44,8 @@ sub %1, r15
 %define DE_CODE 4
 %define DE_FLAGS 8
 %define DE_NAME 9
-%define TIB_MAX_SIZE 256
-%define TIB_MAX_IDX 255
+%define TIB_MAX_SIZE 255
+%define TIB_MAX_IDX 254
 
 ; user input test, we prompt for input once and try to execute the word
 ; if the user types "GREET", they should see the greeting message,
@@ -265,19 +265,29 @@ db "REFILL", 0
 
 ; WORD parses the next word in the TIB,
 ; and returns its image-relative address
+; TODO: make it work for hitting the buffer limit too
 WORD_:
+; / setup
 movzx eax, byte [rel tib_idx]
 mov byte [rel scan_start], al ; so we can restore state later in case we need to request more input
+; setup /
+
+; / load args
 .restart:
 lea rsi, [rel tib]
 mov dl, ' ' ; space
 mov cl, 0xA ; newline
 jmp .skip_whitespace_start
+; load args /
 
-.skip_whitespace: ; skip leading whitespaces
+; / leading whitespace handler
+.skip_whitespace:
 inc al
 mov byte [rel tib_idx], al ; update tib_idx, we need this so we don't return a bad pointer later
+mov byte [rel scan_start], al ; the start of the word is not actually the whitespace
 .skip_whitespace_start:
+cmp al, TIB_MAX_SIZE
+je .clear_refill
 cmp al, byte [rel tib_len]
 je .refill
 
@@ -285,8 +295,12 @@ cmp dl, [rsi + rax]
 je .skip_whitespace ; if space, skip
 cmp cl, [rsi + rax]
 je .skip_whitespace ; if newline, skip
+; leading whitespace handler /
 
+; / main loop
 .inner:
+cmp al, TIB_MAX_SIZE
+je .clear_refill
 cmp al, byte [rel tib_len]
 je .refill
 
@@ -296,7 +310,9 @@ cmp cl, [rsi + rax]
 je .end ; if newline, end of word
 inc al ; else, increment idx
 jmp .inner
+; main loop /
 
+; / success path
 .end: ; we get here if we found a space or newline
 mov rdx, rsi
 unresPTR rdx
@@ -306,14 +322,25 @@ mov byte [rsi + rax], 0 ; make the address we pushed be a valid pointer
 inc al ; so that the next call to WORD won't start at the null terminator
 mov byte [rel tib_idx], al ; update tib_idx
 ret
+; success path /
 
-.refill: ; if we are out of input, get more and retry
+; / run out of input
+.refill:
 mov byte [rel tib_idx], al
-
 call REFILL
 mov al, byte [rel scan_start]
 mov [rel tib_idx], al
 jmp .restart
+; run out of input /
+
+; / input exceeds TIB size
+.clear_refill:
+mov al, byte [rel scan_start]
+mov byte [rel tib_idx], al
+call CLEAR
+call REFILL
+jmp WORD_
+; input exceeds TIB size /
 WORD__entry:
 dd REFILL_entry
 dd WORD_
@@ -359,7 +386,7 @@ state db 0 ; 0 = interpreting, 1 = compiling
 scan_start db 0 ; used to restore WORD parse state, copy of tib_idx
 tib_idx db 0 ; current point in tib we're at, if add tib to this and resPTR it you get a valid string pointer
 tib_len db 0 ; current amount of bytes in tib, REFILL puts the return value sys_read
-tib times 256 db 0 ; no delimiter on this string, be very careful about bounds checks!
+tib times TIB_MAX_SIZE db 0 ; no delimiter on this string, be very careful about bounds checks!
 
 ; HERE_START is at the end of the bootstrap image \
 ; so that new words start compiling past the \
