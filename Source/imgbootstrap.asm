@@ -375,20 +375,20 @@ db "CLEAR", 0
 
 ; INTERPRET is the main outer interpreter loop
 INTERPRET:
-.loop:
 call WORD_
 call FIND
 call EXECUTE
-jmp .loop
+jmp INTERPRET
 INTERPRET_entry:
 dd CLEAR_entry
 dd INTERPRET
 db 0
 db "INTERPRET", 0
 
-; EXIT returns to the Forth loader,
-; assuming that it's called from the original INTERPRET call \
-; in the entry point.
+; EXIT returns to the Forth loader, assuming that it's called from the original INTERPRET call in the entry point.
+; Otherwise it might segfault, to discourage calling it outside the top-level interpreter it is an immediate word.
+; But of course that doesn't stop you from calling POSTPONE or just calling INTERPRET inside of INTERPRET.
+; So just don't expect it to work unless you're actually in the top-level.
 EXIT:
 add rsp, 8 ; skip the address pushed by `call EXECUTE`
 ret ; return to the entry point just after `jmp EXECUTE` which returns a final time to the loader
