@@ -265,7 +265,6 @@ db "REFILL", 0
 
 ; WORD parses the next word in the TIB,
 ; and returns its image-relative address
-; TODO: make it work for hitting the buffer limit too
 WORD_:
 ; / setup
 movzx eax, byte [rel tib_idx]
@@ -287,7 +286,7 @@ mov byte [rel tib_idx], al ; update tib_idx, we need this so we don't return a b
 mov byte [rel scan_start], al ; the start of the word is not actually the whitespace
 .skip_whitespace_start:
 cmp al, TIB_MAX_SIZE
-je .clear_refill
+je .clear
 cmp al, byte [rel tib_len]
 je .refill
 
@@ -300,7 +299,7 @@ je .skip_whitespace ; if newline, skip
 ; / main loop
 .inner:
 cmp al, TIB_MAX_SIZE
-je .clear_refill
+je .clear
 cmp al, byte [rel tib_len]
 je .refill
 
@@ -316,7 +315,8 @@ jmp .inner
 .end: ; we get here if we found a space or newline
 mov rdx, rsi
 unresPTR rdx
-add dl, byte [rel tib_idx]
+movzx ecx, byte [rel tib_idx]
+add edx, ecx ; do this instead of `add dl, byte [rel tib_idx]` to avoid overflow problems
 dPUSH rdx
 mov byte [rsi + rax], 0 ; make the address we pushed be a valid pointer
 inc al ; so that the next call to WORD won't start at the null terminator
@@ -334,11 +334,10 @@ jmp .restart
 ; run out of input /
 
 ; / input exceeds TIB size
-.clear_refill:
+.clear:
 mov al, byte [rel scan_start]
 mov byte [rel tib_idx], al
 call CLEAR
-call REFILL
 jmp WORD_
 ; input exceeds TIB size /
 WORD__entry:
