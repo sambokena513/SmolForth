@@ -47,9 +47,7 @@ sub %1, r15
 %define TIB_MAX_SIZE 255
 %define TIB_MAX_IDX 254
 
-; user input test, we prompt for input once and try to execute the word
-; if the user types "GREET", they should see the greeting message,
-; otherwise it'll probably segfault or smth
+; entry point, image executes one word and then exits, for multiple words the user can type INTERPRET
 call WORD_
 call FIND
 jmp EXECUTE
@@ -388,9 +386,22 @@ dd INTERPRET
 db 0
 db "INTERPRET", 0
 
+; EXIT returns to the Forth loader,
+; assuming that it's called from the original INTERPRET call \
+; in the entry point.
+EXIT:
+add rsp, 8 ; skip the address pushed by `call EXECUTE`
+ret ; return to the entry point just after `jmp EXECUTE` which returns a final time to the loader
+EXIT_entry:
+dd INTERPRET_entry
+dd EXIT
+db 1 ; IMMEDIATE
+db "EXIT", 0
+
+
 ; interpreter variables
 
-latest_def dd INTERPRET_entry ; image-relative address, resPTR it before dereferencing!
+latest_def dd EXIT_entry ; image-relative address, resPTR it before dereferencing!
 here dd HERE_START ; also image-relative
 state db 0 ; 0 = interpreting, 1 = compiling
 scan_start db 0 ; used to restore WORD parse state, copy of tib_idx
