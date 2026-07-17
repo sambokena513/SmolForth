@@ -45,6 +45,7 @@ sub %1, r15
 %define DE_FLAGS 8
 %define DE_NAME 9
 %define TIB_MAX_SIZE 256
+%define TIB_MAX_IDX 255
 
 ; user input test, we prompt for input once and try to execute the word
 ; if the user types "GREET", they should see the greeting message,
@@ -243,7 +244,7 @@ db "HERE", 0
 ; REFILL calls sys_write to fill the TIB
 REFILL:
 lea rcx, [rel tib]
-mov r8, 256
+mov r8, TIB_MAX_SIZE
 movzx r9, byte [rel tib_idx]
 add rcx, r9
 sub r8, r9
@@ -264,9 +265,10 @@ db "REFILL", 0
 
 ; WORD parses the next word in the TIB,
 ; and returns its image-relative address
-; TODO: make it request more input if it runs out or is called without input
 WORD_:
 movzx eax, byte [rel tib_idx]
+mov byte [rel scan_start], al ; so we can restore state later in case we need to request more input
+.restart:
 lea rsi, [rel tib]
 mov dl, ' ' ; space
 mov cl, 0xA ; newline
@@ -276,12 +278,18 @@ jmp .skip_whitespace_start
 inc al
 mov byte [rel tib_idx], al ; update tib_idx, we need this so we don't return a bad pointer later
 .skip_whitespace_start:
+cmp al, byte [rel tib_len]
+je .refill
+
 cmp dl, [rsi + rax]
 je .skip_whitespace ; if space, skip
 cmp cl, [rsi + rax]
 je .skip_whitespace ; if newline, skip
 
 .inner:
+cmp al, byte [rel tib_len]
+je .refill
+
 cmp dl, [rsi + rax]
 je .end ; if space, end of word
 cmp cl, [rsi + rax]
@@ -298,6 +306,14 @@ mov byte [rsi + rax], 0 ; make the address we pushed be a valid pointer
 inc al ; so that the next call to WORD won't start at the null terminator
 mov byte [rel tib_idx], al ; update tib_idx
 ret
+
+.refill: ; if we are out of input, get more and retry
+mov byte [rel tib_idx], al
+
+call REFILL
+mov al, byte [rel scan_start]
+mov [rel tib_idx], al
+jmp .restart
 WORD__entry:
 dd REFILL_entry
 dd WORD_
@@ -340,6 +356,7 @@ db "CLEAR", 0
 latest_def dd CLEAR_entry ; image-relative address, resPTR it before dereferencing!
 here dd HERE_START ; also image-relative
 state db 0 ; 0 = interpreting, 1 = compiling
+scan_start db 0 ; used to restore WORD parse state, copy of tib_idx
 tib_idx db 0 ; current point in tib we're at, if add tib to this and resPTR it you get a valid string pointer
 tib_len db 0 ; current amount of bytes in tib, REFILL puts the return value sys_read
 tib times 256 db 0 ; no delimiter on this string, be very careful about bounds checks!
