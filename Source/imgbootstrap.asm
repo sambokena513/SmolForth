@@ -399,9 +399,74 @@ db 1 ; IMMEDIATE
 db "EXIT", 0
 
 
+; NUMBER? takes in a string pointer (image-relative),
+; and attempts to parse it as a decimal integer.
+; It pushes two values to the data stack; whether it was successful (-1 or 0), and the parsed value (-1 if err).
+NUMBERq:
+dPOP rax
+resPTR rax
+xor rbx, rbx ; parsed val, initialize to 0
+mov rcx, -1 ; sign, initialize to -1 for positive
+xor rdx, rdx ; digit, clear upper bits so we can use 8-bit instructions later
+
+; / check empty
+cmp byte [rax], 0
+je .fail
+; check empty /
+
+; / negative?
+cmp byte [rax], '-'
+jne .loop
+mov rcx, 1
+inc rax ; advance
+; negative? /
+
+; / check empty
+cmp byte [rax], 0
+je .fail
+; check empty /
+
+; / main loop
+.loop:
+cmp byte [rax], 0
+je .success
+
+cmp byte [rax], '0'
+jl .fail
+cmp byte [rax], '9'
+jg .fail
+
+mov dl, byte [rax]
+sub dl, '0'
+
+imul rbx, 10
+sub rbx, rdx
+
+inc rax
+jmp .loop
+; main loop /
+
+.fail:
+dPUSH -1
+dPUSH -1
+ret
+.success:
+imul rbx, rcx ; multiply by sign
+dPUSH rbx
+dPUSH 0
+ret
+NUMBERq_entry:
+dd EXIT_entry
+dd NUMBERq
+db 0
+db "NUMBER?", 0
+
+; TODO: arithmetic, LIT, LITERAL, 0BRANCH, ECR32, IMMEDIATE, . (dot), CREATE, ALLOT
+
+
 ; interpreter variables
 
-latest_def dd EXIT_entry ; image-relative address, resPTR it before dereferencing!
+latest_def dd NUMBERq_entry ; image-relative address, resPTR it before dereferencing!
 here dd HERE_START ; also image-relative
 state db 0 ; 0 = interpreting, 1 = compiling
 scan_start db 0 ; used to restore WORD parse state, copy of tib_idx
