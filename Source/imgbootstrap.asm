@@ -4,7 +4,7 @@ org 0 ; so that the assembler gives us image-relative addresses for labels
 %macro SYS_WRITE 2 ; buf, len
 mov rax, 1
 mov rdi, 1
-lea rsi, %1
+mov rsi, %1
 mov rdx, %2
 syscall
 %endmacro
@@ -44,7 +44,7 @@ sub %1, r15
 %define DE_CODE 4
 %define DE_FLAGS 8
 %define DE_NAME 9
-%define TIB_MAX_SIZE 255
+%define TIB_MAX_SIZE 255 ; 255 instead of 256 so that we can store the current size in one byte
 %define TIB_MAX_IDX 254
 
 ; entry point, image executes one word and then exits, for multiple words the user can type INTERPRET
@@ -56,7 +56,8 @@ ret
 ; test word that we use to verify image integrity,
 ; as well as later outer interpreter functionality
 GREET:
-SYS_WRITE [rel msg], msg_size
+lea rsi, [rel msg]
+SYS_WRITE rsi, msg_size
 ret
 msg db "Hello from the image!", 0xA
 msg_size equ $ - msg
@@ -461,12 +462,79 @@ dd NUMBERq
 db 0
 db "NUMBER?", 0
 
-; TODO: arithmetic, LIT, LITERAL, 0BRANCH, ECR32, IMMEDIATE, . (dot), CREATE, ALLOT
+
+; discard one value from the data stack
+POP:
+sub r14, 8
+ret
+POP_entry:
+dd NUMBERq_entry
+dd POP
+db 0
+db "POP", 0
+
+
+; . (dot) takes in a 64-bit integer argument and prints it in decimal format
+; Note that dot uses the data stack as temporary storage for \
+; its string (this is to avoid having one syscall for each character),
+; meaning that if the stack is already very close to the 32KB limit this might hit a guard page \
+; and trigger SIGSEGV.
+DOT:
+dPOP rax
+lea rsi, [r14 + 32]
+; ^^^^ reserve memory, 24 and not 32 because r14 points to TOS, not a free cell, 
+; this way we don't overwrite whatever was in the stack before. 
+xor rdi, rdi ; negative of string length, initialized at 0
+mov rbx, 1 ; is rax negative?, initialized as true
+mov rcx, 10 ; divisor
+
+; add a newline first
+mov dl, 0xA
+mov byte [rsi + rdi], dl
+dec rdi
+
+test rax, rax
+js .loop
+xor rbx, rbx
+neg rax
+.loop:
+cqo
+idiv rcx
+
+neg rdx
+add dl, '0'
+mov byte [rsi + rdi], dl
+dec rdi
+
+test rax, rax
+jnz .loop
+
+test rbx, rbx
+jz .end
+mov byte [rsi + rdi], '-'
+dec rdi
+.end:
+add rsi, rdi
+neg rdi
+lea rdx, [rdi + 1]
+mov rax, 1
+mov rdi, 1
+syscall
+ret
+DOT_entry:
+dd POP_entry
+dd DOT
+db 0
+db ".", 0
+
+
+; TODO: arithmetic, LIT, LITERAL, 0BRANCH, ECR32, IMMEDIATE, CREATE, ALLOT
+; maybe split DOT into DOT and I64TS?
 
 
 ; interpreter variables
 
-latest_def dd NUMBERq_entry ; image-relative address, resPTR it before dereferencing!
+latest_def dd DOT_entry ; image-relative address, resPTR it before dereferencing!
 here dd HERE_START ; also image-relative
 state db 0 ; 0 = interpreting, 1 = compiling
 scan_start db 0 ; used to restore WORD parse state, copy of tib_idx

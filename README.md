@@ -28,7 +28,7 @@
     The ABI treats every register apart from r14 and r15 (which are reserved) as caller-saved, you are encouraged to not use registers for storing intermediate values, use the data stack or only use registers in primitives that call nothing else.
     Apart from that, clean up any intermediates on the stack when you're done with them, you shouldn't rely on the stack being emptied when the image is reloaded to make your code work.
 
-    The TIB is 256 bytes, we only call sys_read with a length long enough to fill the TIB. If a word gets cut off we backtrack to the last whitespace, interpret that, and copy the cut-off word back to the start of TIB, then sys_read with the length being 256 - however many characters are already in TIB.
+    The TIB is 255 bytes, we only call sys_read with a length long enough to fill the TIB. If a word gets cut off we backtrack to the last whitespace, interpret that, and copy the cut-off word back to the start of TIB, then sys_read with the length being 255 - however many characters are already in TIB.
 
     Whitespaces (such as spaces or newlines) are changed to null bytes by parsing words like WORD.
     This allows words such as FIND that look for a null terminator in their string arguments to be given pointers into the TIB.
