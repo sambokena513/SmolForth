@@ -474,24 +474,19 @@ db 0
 db "POP", 0
 
 
-; . (dot) takes in a 64-bit integer argument and prints it in decimal format
-; Note that dot uses the data stack as temporary storage for \
-; its string (this is to avoid having one syscall for each character),
-; meaning that if the stack is already very close to the 32KB limit this might hit a guard page \
-; and trigger SIGSEGV.
-DOT:
-dPOP rax
-lea rsi, [r14 + 32]
-; ^^^^ reserve memory, 24 and not 32 because r14 points to TOS, not a free cell, 
-; this way we don't overwrite whatever was in the stack before. 
-xor rdi, rdi ; negative of string length, initialized at 0
+; I64TS takes in an address pointing to the end of a 21-byte free block and a 64 bit integer,
+; and converts the integer to a string which it ensures ends at addr.
+; It then returns the address the string starts at.
+I64TS:
+dPOP rsi ; pointer
+dPOP rax ; i64
 mov rbx, 1 ; is rax negative?, initialized as true
 mov rcx, 10 ; divisor
 
-; add a newline first
-mov dl, 0xA
-mov byte [rsi + rdi], dl
-dec rdi
+; add the delimiter first
+mov dl, 0
+mov byte [rsi], dl
+dec rsi
 
 test rax, rax
 js .loop
@@ -503,33 +498,64 @@ idiv rcx
 
 neg rdx
 add dl, '0'
-mov byte [rsi + rdi], dl
-dec rdi
+mov byte [rsi], dl
+dec rsi
 
 test rax, rax
 jnz .loop
 
 test rbx, rbx
 jz .end
-mov byte [rsi + rdi], '-'
-dec rdi
+mov byte [rsi], '-'
+dec rsi
+
 .end:
-add rsi, rdi
-neg rdi
-lea rdx, [rdi + 1]
+inc rsi
+dPUSH rsi
+ret
+I64TS_entry:
+dd POP_entry
+dd I64TS
+db 0
+db "I64TS", 0
+
+
+; . (dot) takes in a 64-bit integer argument and prints it in decimal format
+; Note that dot uses the data stack as temporary storage for \
+; its string (this is to avoid having one syscall for each character),
+; meaning that if the stack is already very close to the 32KB limit this might hit a guard page \
+; and trigger SIGSEGV.
+DOT:
+lea rsi, [r14 + 48]
+; ^^^ reserve space for I64TS,
+; normally we'd need an extra 8 bytes but because of `dPOP rax` \
+; r14 moves down by 8 letting us get away with this
+dPOP rax ; pop val arg
+dPUSH rsi ; save rsi for later
+dPUSH rax ; push val arg
+dPUSH rsi ; push addr arg
+
+call I64TS ; convert to string
+
+dPOP rsi ; start addr
+dPOP rdx ; end addr
+
+mov byte [rdx], 0xA ; replace null delimiter with newline
+sub rdx, rsi ; rdx now has the length
+inc rdx ; add 1 since we want to print up to end_addr, not to just before it
+
 mov rax, 1
 mov rdi, 1
-syscall
+syscall ; sys_write
 ret
 DOT_entry:
-dd POP_entry
+dd I64TS_entry
 dd DOT
 db 0
 db ".", 0
 
 
 ; TODO: arithmetic, LIT, LITERAL, 0BRANCH, ECR32, IMMEDIATE, CREATE, ALLOT
-; maybe split DOT into DOT and I64TS?
 
 
 ; interpreter variables
