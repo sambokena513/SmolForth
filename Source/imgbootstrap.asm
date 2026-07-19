@@ -655,9 +655,35 @@ dd _0BR
 db NO_INTERPRET
 db "0BR", 0
 
+
+DUP:
+dPOP rax
+dPUSH rax
+dPUSH rax
+ret
+DUP_entry:
+dd _0BR_entry
+dd DUP
+db 0
+db "DUP", 0
+
+
+SWAP:
+dPOP rax
+dPOP rbx
+dPUSH rax
+dPUSH rbx
+ret
+SWAP_entry:
+dd DUP_entry
+dd SWAP
+db 0
+db "SWAP", 0
+
+
 ; interpreter variables
 
-latest_def dd _0BR_entry ; image-relative address, resPTR it before dereferencing!
+latest_def dd SWAP_entry ; image-relative address, resPTR it before dereferencing!
 here dd HERE_START ; also image-relative
 state db 0 ; 0 = interpreting, 1 = compiling
 scan_start db 0 ; used to restore WORD parse state, copy of tib_idx
