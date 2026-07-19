@@ -374,18 +374,6 @@ db 0
 db "CLEAR", 0
 
 
-; INTERPRET is the main outer interpreter loop
-INTERPRET:
-call WORD_
-call FIND
-call EXECUTE
-jmp INTERPRET
-INTERPRET_entry:
-dd CLEAR_entry
-dd INTERPRET
-db 0
-db "INTERPRET", 0
-
 ; EXIT returns to the Forth loader, assuming that it's called from the original INTERPRET call in the entry point.
 ; Otherwise if you're in a nested INTERPRET call it will exit that one, and if you just call it from somewhere else \
 ; then it will probably corrupt the return stack and segfault. Don't use outside of the REPL!
@@ -393,7 +381,7 @@ EXIT:
 add rsp, 8 ; skip the address pushed by `call EXECUTE`
 ret ; return to the entry point just after `jmp EXECUTE` which returns a final time to the loader
 EXIT_entry:
-dd INTERPRET_entry
+dd CLEAR_entry
 dd EXIT
 db NO_COMPILE | IMMEDIATE
 db "EXIT", 0
@@ -645,6 +633,7 @@ jnz .not_zero
 mov rax, [rsp]
 mov eax, [rax] ; load rel32
 add [rsp], eax
+add [rsp], 4 ; so it's relative to where the offset is and not to the instruction itself
 ret
 .not_zero:
 add [rsp], 4 ; skip rel32
@@ -681,9 +670,46 @@ db 0
 db "SWAP", 0
 
 
+; Basic syscall wrapper, takes 6 args and pushes the return value
+SYSCALL_:
+dPOP rax
+dPOP rdi
+dPOP rsi
+dPOP rdx
+dPOP r10
+dPOP r8
+dPOP r9
+syscall
+dPUSH rax
+ret
+SYSCALL__entry:
+dd SWAP_entry
+dd SYSCALL_
+db 0
+db "SYSCALL", 0
+
+
+; INTERPRET is the main outer interpreter loop
+; note that this is the only word in the bootstrap image that follows the format compiled words will take
+INTERPRET:
+call WORD_
+call FIND
+call EXECUTE
+call LIT
+dq 0
+call _0BR
+dd INTERPRET - ($ + 4)
+ret ; unreachable but we put this in so that INTERPRET has the same format as other compiled words
+INTERPRET_entry:
+dd SYSCALL__entry
+dd INTERPRET
+db 0
+db "INTERPRET", 0
+
+
 ; interpreter variables
 
-latest_def dd SWAP_entry ; image-relative address, resPTR it before dereferencing!
+latest_def dd INTERPRET_entry ; image-relative address, resPTR it before dereferencing!
 here dd HERE_START ; also image-relative
 state db 0 ; 0 = interpreting, 1 = compiling
 scan_start db 0 ; used to restore WORD parse state, copy of tib_idx
