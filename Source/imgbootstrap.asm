@@ -689,19 +689,41 @@ db 0
 db "SYSCALL", 0
 
 
+BASE:
+dPUSH r15
+ret
+BASE_entry:
+dd SYSCALL__entry
+dd BASE
+db 0
+db "BASE", 0
+
+
 ; INTERPRET is the main outer interpreter loop
 ; note that this is the only word in the bootstrap image that follows the format compiled words will take
 INTERPRET:
 call WORD_
+call DUP
+call NUMBERq
+call _0BR
+dd .number - ($ + 4)
+call POP
 call FIND
 call EXECUTE
 call LIT
 dq 0
 call _0BR
 dd INTERPRET - ($ + 4)
-ret ; unreachable but we put this in so that INTERPRET has the same format as other compiled words
+.number:
+call SWAP
+call POP
+call LIT
+dq 0
+call _0BR
+dd INTERPRET - ($ + 4)
+ret
 INTERPRET_entry:
-dd SYSCALL__entry
+dd BASE_entry
 dd INTERPRET
 db 0
 db "INTERPRET", 0
