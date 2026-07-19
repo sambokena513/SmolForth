@@ -238,7 +238,7 @@ db 0
 db "EXECUTE", 0
 
 
-; REFILL calls sys_write to fill the TIB
+; REFILL calls sys_read to fill the TIB
 REFILL:
 lea rcx, [rel tib]
 mov r8, TIB_MAX_SIZE
@@ -602,7 +602,7 @@ db "/", 0
 ; aINTERPS pushes the image-relative address of the start of the outer interpreter var struct,
 ; which is the same address as that of the interpreter variable latest_def
 aINTERPS:
-lea rax, [rel here]
+lea rax, [rel latest_def]
 unresPTR rax
 dPUSH rax
 ret
