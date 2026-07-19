@@ -44,6 +44,15 @@ sub %1, r15
 %define DE_CODE 4
 %define DE_FLAGS 8
 %define DE_NAME 9
+%define NO_INTERPRET 0b00001000 ; outer interpreter should error when it attempts to interpret this
+%define NO_INTERPRET_S 3
+%define NO_COMPILE 0b00000100 ; outer interpreter should error when it attempts to compile this
+%define NO_COMPILE_S 2
+%define HIDDEN 0b00000010 ; FIND should skip this
+%define HIDDEN_S 1
+%define IMMEDIATE 0b00000001 ; outer interpreter should attempt to interpret this instead of
+%define IMMEDIATE_S 0
+
 %define TIB_MAX_SIZE 255 ; 255 instead of 256 so that we can store the current size in one byte
 %define TIB_MAX_IDX 254
 
@@ -178,24 +187,28 @@ dPOP rax ; strptr
 resPTR rax
 xor rdi, rdi ; index
 mov esi, [rel latest_def]
-resPTR rsi ; rsi now points to the latest entry
-jmp .inner
+jmp .start
 
 .outer:
 mov esi, [rsi] ; next linked list node
-test rsi, rsi ; check if last node
-jz .fail ; if last, fail
-resPTR rsi ; else, resolve pointer
-xor rdi, rdi ; reset index
+test rsi, rsi
+jz .fail ; if last node
+.start:
+resPTR rsi
+mov edi, [rsi + DE_FLAGS]
+and edi, HIDDEN
+shr edi, HIDDEN_S
+jnz .outer ; if HIDDEN, skip the word
+xor rdi, rdi
 .inner:
 mov cl, byte [rsi + rdi + DE_NAME] ; cl = dict_word_name[idx]
 cmp cl, byte [rax + rdi]
-jne .outer ; if a byte was different
+jne .outer
 
 test cl, cl ; if bytes were same, check if null terminator
 jz .success ; if yes, success
 
-inc rdi ; else, increment and go to next iteration
+inc rdi
 jmp .inner
 
 .success:
@@ -227,17 +240,6 @@ db 0
 db "EXECUTE", 0
 
 
-; HERE pushes the value of the interpreter variable HERE
-HERE:
-mov eax, [rel here]
-dPUSH rax
-ret
-HERE_entry:
-dd EXECUTE_entry
-dd HERE
-db 0
-db "HERE", 0
-
 ; REFILL calls sys_write to fill the TIB
 REFILL:
 lea rcx, [rel tib]
@@ -254,7 +256,7 @@ add al, byte [rel tib_idx]
 mov byte [rel tib_len], al ; tib_len = bytes_read + tib_idx
 ret
 REFILL_entry:
-dd HERE_entry
+dd EXECUTE_entry
 dd REFILL
 db 0
 db "REFILL", 0
@@ -387,16 +389,15 @@ db 0
 db "INTERPRET", 0
 
 ; EXIT returns to the Forth loader, assuming that it's called from the original INTERPRET call in the entry point.
-; Otherwise it might segfault, to discourage calling it outside the top-level interpreter it is an immediate word.
-; But of course that doesn't stop you from calling POSTPONE or just calling INTERPRET inside of INTERPRET.
-; So just don't expect it to work unless you're actually in the top-level.
+; Otherwise if you're in a nested INTERPRET call it will exit that one, and if you just call it from somewhere else \
+; then it will probably corrupt the return stack and segfault. Don't use outside of the REPL!
 EXIT:
 add rsp, 8 ; skip the address pushed by `call EXECUTE`
 ret ; return to the entry point just after `jmp EXECUTE` which returns a final time to the loader
 EXIT_entry:
 dd INTERPRET_entry
 dd EXIT
-db 1 ; IMMEDIATE
+db NO_COMPILE | IMMEDIATE
 db "EXIT", 0
 
 
@@ -492,7 +493,7 @@ test rax, rax
 js .loop
 xor rbx, rbx
 neg rax
-.loop:
+.loop: ; operate on negative numbers so we automatically handle INT64_MIN
 cqo
 idiv rcx
 
@@ -555,17 +556,115 @@ db 0
 db ".", 0
 
 
-; TODO: arithmetic, LIT, LITERAL, 0BRANCH, ECR32, IMMEDIATE, CREATE, ALLOT
+; all arithmetic primitives pop 2 numbers from the stack, perform an operation, and push the result
+; (note that the calling convention is `arg2 arg1 op` meaning that to perform 2 - 3 you would write `3 2 -`)
 
+PLUS:
+dPOP rax
+dPOP rbx
+add rax, rbx
+dPUSH rax
+ret
+PLUS_entry:
+dd DOT_entry
+dd PLUS
+db 0
+db "+", 0
+
+
+MINUS:
+dPOP rax
+dPOP rbx
+sub rax, rbx
+dPUSH rax
+ret
+MINUS_entry:
+dd PLUS_entry
+dd MINUS
+db 0
+db "-", 0
+
+
+MUL_:
+dPOP rax
+dPOP rbx
+imul rax, rbx
+dPUSH rax
+ret
+MUL__entry:
+dd MINUS_entry
+dd MUL_
+db 0
+db "*", 0
+
+
+; note that this performs integer division, our Forth doesn't natively support floats
+DIV_:
+dPOP rax
+dPOP rbx
+cqo
+idiv rbx
+dPUSH rax
+ret
+DIV__entry:
+dd MUL__entry
+dd DIV_
+db 0
+db "/", 0
+
+
+; aINTERPS pushes the image-relative address of the start of the outer interpreter var struct,
+; which is the same address as that of the interpreter variable latest_def
+aINTERPS:
+lea rax, [rel here]
+unresPTR rax
+dPUSH rax
+ret
+aINTERPS_entry:
+dd DIV__entry
+dd aINTERPS
+db 0
+db "aINTERPS", 0
+
+
+LIT:
+mov rax, [rsp] ; return address
+mov rax, [rax] ; i64
+dPUSH rax
+add [rsp], 8 ; advance past it
+ret ; return, skipping past the integer
+LIT_entry:
+dd aINTERPS_entry
+dd LIT
+db NO_INTERPRET
+db "LIT", 0
+
+
+_0BR:
+dPOP rax
+test rax, rax
+jnz .not_zero
+mov rax, [rsp]
+mov eax, [rax] ; load rel32
+add [rsp], eax
+ret
+.not_zero:
+add [rsp], 4 ; skip rel32
+ret
+_0BR_entry:
+dd LIT_entry
+dd _0BR
+db NO_INTERPRET
+db "0BR", 0
 
 ; interpreter variables
 
-latest_def dd DOT_entry ; image-relative address, resPTR it before dereferencing!
+latest_def dd _0BR_entry ; image-relative address, resPTR it before dereferencing!
 here dd HERE_START ; also image-relative
 state db 0 ; 0 = interpreting, 1 = compiling
 scan_start db 0 ; used to restore WORD parse state, copy of tib_idx
 tib_idx db 0 ; current point in tib we're at, if add tib to this and resPTR it you get a valid string pointer
-tib_len db 0 ; current amount of bytes in tib, REFILL puts the return value sys_read
+tib_len db 0 ; current amount of bytes in tib
 tib times TIB_MAX_SIZE db 0 ; no delimiter on this string, be very careful about bounds checks!
 
 ; HERE_START is at the end of the bootstrap image \
