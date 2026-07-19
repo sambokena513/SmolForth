@@ -195,9 +195,7 @@ test rsi, rsi
 jz .fail ; if last node
 .start:
 resPTR rsi
-mov edi, [rsi + DE_FLAGS]
-and edi, HIDDEN
-shr edi, HIDDEN_S
+test byte [rsi + DE_FLAGS], HIDDEN
 jnz .outer ; if HIDDEN, skip the word
 xor rdi, rdi
 .inner:
@@ -485,7 +483,7 @@ mov rbx, 1 ; is rax negative?, initialized as true
 mov rcx, 10 ; divisor
 
 ; add the delimiter first
-mov dl, 0
+xor rdi, rdi
 mov byte [rsi], dl
 dec rsi
 
