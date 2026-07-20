@@ -83,7 +83,7 @@ db "GREET", 0
 ; fetch 8 bits
 FETCHb:
 mov rax, [r14]
-movzx eax, byte [r15 + rax]
+movsx rax, byte [r15 + rax]
 mov [r14], rax
 ret
 FETCHb_entry:
@@ -95,7 +95,7 @@ db "@b", 0
 ; fetch 16 bits
 FETCHw:
 mov rax, [r14]
-movzx eax, word [r15 + rax]
+movsx rax, word [r15 + rax]
 mov [r14], rax
 ret
 FETCHw_entry:
@@ -107,7 +107,7 @@ db "@w", 0
 ; fetch 32 bits
 FETCHd:
 mov rax, [r14]
-mov eax, [r15 + rax]
+movsxd rax, dword [r15 + rax]
 mov [r14], rax
 ret
 FETCHd_entry:
@@ -599,6 +599,57 @@ db 0
 db "/", 0
 
 
+NOT_:
+dPOP rax
+not rax
+dPUSH rax
+ret
+NOT__entry:
+dd DIV__entry
+dd NOT_
+db 0
+db "~", 0
+
+
+AND_:
+dPOP rax
+dPOP rbx
+and rax, rbx
+dPUSH rax
+ret
+AND__entry:
+dd NOT__entry
+dd AND_
+db 0
+db "&", 0
+
+
+OR_:
+dPOP rax
+dPOP rbx
+or rax, rbx
+dPUSH rax
+ret
+OR__entry:
+dd AND__entry
+dd OR_
+db 0
+db "|", 0
+
+
+XOR_:
+dPOP rax
+dPOP rbx
+xor rax, rbx
+dPUSH rax
+ret
+XOR__entry:
+dd OR__entry
+dd XOR_
+db 0
+db "^", 0
+
+
 ; aINTERPS pushes the image-relative address of the start of the outer interpreter var struct,
 ; which is the same address as that of the interpreter variable latest_def
 aINTERPS:
@@ -607,7 +658,7 @@ unresPTR rax
 dPUSH rax
 ret
 aINTERPS_entry:
-dd DIV__entry
+dd XOR__entry
 dd aINTERPS
 db 0
 db "aINTERPS", 0
@@ -699,8 +750,32 @@ db 0
 db "BASE", 0
 
 
+; ECR32 emits a `call rel32` instruction at HERE, and moves HERE past it.
+; Its argument is the image-relative address of the *dict entry* \
+; of the word we're compiling a call to, such as produced by FIND.
+ECR32:
+dPOP rax
+mov rax, [r15 + rax + DE_CODE] ; rax now has the code pointer
+
+mov ebx, [rel here]
+mov byte [r15 + rbx], 0xe8 ; put call opcode at HERE
+
+; offset = ADDR - (HERE + 5)
+sub rax, rbx
+sub rax, 5
+
+mov [r15 + rbx + 1], eax ; store the rel32 offset
+
+add qword [rel here], 5
+ret
+ECR32_entry:
+dd BASE_entry
+dd ECR32
+db 0
+db "ECR32", 0
+
+
 ; INTERPRET is the main outer interpreter loop
-; note that this is the only word in the bootstrap image that follows the format compiled words will take
 INTERPRET:
 call WORD_
 call DUP
@@ -723,7 +798,7 @@ call _0BR
 dd INTERPRET - ($ + 4)
 ret
 INTERPRET_entry:
-dd BASE_entry
+dd ECR32_entry
 dd INTERPRET
 db 0
 db "INTERPRET", 0
