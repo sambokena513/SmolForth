@@ -1,19 +1,19 @@
-; This is a forth-comment file, this is not executable as \
-; the system this is built for does not support comments.
-; To run this, copy it to a different file and then \
-; remove everything from each semicolon to the next newline.
+// This is a forth-comment file, this is not executable as \
+// the system this is built for does not support comments.
+// To run this, copy it to a different file and then \
+// remove everything from each `//` to the next newline.
 
 INTERPRET
 
 
-aINTERPS @d aINTERPS 4 + @d !d ; store link pointing to the current latest_def at HERE
-aINTERPS 4 + DUP @d 4 + SWAP !d ; add HERE, 4
-WORD GREET FIND 4 + @d aINTERPS 4 + @d !d ; store code pointer for GREET at HERE
-aINTERPS 4 + DUP @d 4 + SWAP !d ; add HERE, 4
-0 aINTERPS 4 + @d !b ; give the word default behaviour
-aINTERPS 4 + DUP @d 1 + SWAP !d ; add HERE, 1
-63 aINTERPS 4 + @d !b ; store '?' character at HERE
-aINTERPS 4 + DUP @d 1 + SWAP !d ; add HERE, 1
-0 aINTERPS 4 + @d !b ; store '\000' at HERE
-aINTERPS 4 + DUP @d 1 + SWAP !d ; add HERE, 1
-11 aINTERPS 4 + @d - aINTERPS !d ; patch latest_def to contain the new word
+aINTERPS @d aINTERPS 4 + @d !d // store link pointing to the current latest_def at HERE
+aINTERPS 4 + DUP @d 4 + SWAP !d // add HERE, 4
+WORD GREET FIND 4 + @d aINTERPS 4 + @d !d // store code pointer for GREET at HERE
+aINTERPS 4 + DUP @d 4 + SWAP !d // add HERE, 4
+0 aINTERPS 4 + @d !b // give the word default behaviour
+aINTERPS 4 + DUP @d 1 + SWAP !d // add HERE, 1
+63 aINTERPS 4 + @d !b // store '?' character at HERE
+aINTERPS 4 + DUP @d 1 + SWAP !d // add HERE, 1
+0 aINTERPS 4 + @d !b // store '\000' at HERE
+aINTERPS 4 + DUP @d 1 + SWAP !d // add HERE, 1
+11 aINTERPS 4 + @d - aINTERPS !d // patch latest_def to contain the new word

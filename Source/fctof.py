@@ -4,9 +4,9 @@ converted: str = ""
 
 with open("bootstrap.fc") as file:
     converted = " ".join(
-        [line.split(";")[0].strip() 
+        [line.split("//")[0].strip() 
          for line in file.readlines() 
-         if line.split(";")[0].strip()]
+         if line.split("//")[0].strip()]
          ).strip() + "\n"
 
 with open("bootstrap.f", "w") as file:
