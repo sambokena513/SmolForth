@@ -17,6 +17,28 @@ mov rdx, %3
 syscall
 %endmacro
 
+%macro SYS_OPENAT 4 ; dirfd, pathname, flags, mode
+mov rax, 257
+mov rdi, %1
+mov rsi, %2
+mov rdx, %3
+mov r10, %4
+syscall
+%endmacro
+
+%macro SYS_DUP2 2 ; oldfd, newfd
+mov rax, 33
+mov rdi, %1
+mov rsi, %2
+syscall
+%endmacro
+
+%macro SYS_CLOSE 1 ; fd
+mov rax, 3
+mov rdi, %1
+syscall
+%endmacro
+
 ; pop a value from the data stack
 %macro dPOP 1
 mov %1, [r14]
@@ -55,6 +77,11 @@ sub %1, r15
 
 %define TIB_MAX_SIZE 255 ; 255 instead of 256 so that we can store the current size in one byte
 %define TIB_MAX_IDX 254
+
+%define O_RDONLY 0
+%define O_WRONLY 1
+%define O_RDWR 2
+%define AT_FDCWD -100
 
 ; entry point, image executes one word and then exits, for multiple words the user can type INTERPRET
 call WORD_
@@ -238,7 +265,12 @@ db 0
 db "EXECUTE", 0
 
 
-; REFILL calls sys_read to fill the TIB
+; REFILL calls sys_read to fill the TIB.
+; If sys_read fails we simply return without changing the TIB.
+; If we reach EOF then we open /dev/tty and change its fd to stdin,
+; this is to make startup scripts simpler as you can \
+; invoke the loader like `./loader < init.f` and the outer interpreter \
+; will consume that file before switching to the terminal.
 REFILL:
 lea rcx, [rel tib]
 mov r8, TIB_MAX_SIZE
@@ -247,12 +279,25 @@ add rcx, r9
 sub r8, r9
 SYS_READ 0, rcx, r8
 test rax, rax
+jz .eof
 jns .success
-ret ; if sys_read failed then tib_len does not change
+lea rsi, [rel refill_errmsg]
+SYS_WRITE rsi, refill_errmsg_size
+ret
+.eof: ; if we hit EOF we assume we were reading a disk file and redirect stdin back to the terminal
+lea rsi, [rel refill_path]
+SYS_OPENAT AT_FDCWD, rsi, O_RDONLY, 0
+mov rbx, rax
+SYS_DUP2 rbx, 0
+SYS_CLOSE rbx
+ret
 .success:
 add al, byte [rel tib_idx] 
 mov byte [rel tib_len], al ; tib_len = bytes_read + tib_idx
 ret
+refill_path db "/dev/tty", 0
+refill_errmsg db "sys_read failure in REFILL, you may exit the program with ctrl+c.", 0xd
+refill_errmsg_size equ $ - refill_errmsg
 REFILL_entry:
 dd EXECUTE_entry
 dd REFILL
