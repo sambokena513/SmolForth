@@ -811,13 +811,30 @@ sub rax, 5
 
 mov [r15 + rbx + 1], eax ; store the rel32 offset
 
-add qword [rel here], 5
+add dword [rel here], 5
 ret
 ECR32_entry:
 dd BASE_entry
 dd ECR32
 db 0
 db "ECR32", 0
+
+
+; LITERAL is an immediate word that pops a number from the data stack,
+; and compiles it.
+LITERAL:
+dPUSH LIT_entry
+call ECR32 ; compile call to LIT
+dPOP rbx
+mov eax, [rel here]
+mov [r15 + rax], rbx
+add dword [rel here], 8 ; i64
+ret
+LITERAL_entry:
+dd ECR32_entry
+dd LITERAL
+db IMMEDIATE
+db "LITERAL", 0
 
 
 ; INTERPRET is the main outer interpreter loop
@@ -843,7 +860,7 @@ call _0BR
 dd INTERPRET - ($ + 4)
 ret
 INTERPRET_entry:
-dd ECR32_entry
+dd LITERAL_entry
 dd INTERPRET
 db 0
 db "INTERPRET", 0
