@@ -839,12 +839,22 @@ db "LITERAL", 0
 
 ; helper macros to make INTERPRET easier to write
 
-; push the value of the interpreter's `state` variable
-%macro I_STATE 0
+; var offsets
+%define I_O_STATE 8
+%define I_O_TIBIDX 14
+%define I_O_TIBLEN 15
+
+; push the address of the interpreter state struct + offset
+%macro I_SOFFSET 1
 call aINTERPS
 call LIT
-dq 8
+dq %1
 call PLUS
+%endmacro
+
+; push the value of the interpreter's `state` variable
+%macro I_STATE 0
+I_SOFFSET I_O_STATE
 call FETCHb
 %endmacro
 
@@ -867,10 +877,30 @@ I_CONST 0
 I_0BRANCH INTERPRET
 %endmacro
 
-; INTERPRET is the bootstrap outer interpreter.
-; Note that it does not handle any flags other than \
-; HIDDEN (implicitly through FIND) and IMMEDIATE,
-; and it does not handle errors in FIND.
+; handle an error with a message and jump back to the start of INTERPRET
+%macro I_ERR 2
+I_CONST 0
+call DUP
+call DUP
+I_CONST %2
+I_CONST %1
+call BASE
+call PLUS
+I_CONST 1
+I_CONST 1
+call SYSCALL_ ; print err message to stdout
+call POP
+I_SOFFSET I_O_TIBLEN
+call FETCHb
+I_SOFFSET I_O_TIBIDX
+call STOREb
+call CLEAR ; empty TIB so we don't continue interpreting after error
+I_AGAIN
+%endmacro
+
+
+; INTERPRET is the outer interpreter.
+; TODO: add handling for IMMEDIATE, NO_COMPILE, and NO_INTERPRET
 INTERPRET:
 call WORD_
 call DUP
@@ -878,8 +908,16 @@ call NUMBERq
 I_0BRANCH .number
 call POP
 call FIND
+
+; handle error in FIND
+call DUP
+I_CONST 1
+call PLUS
+I_0BRANCH .errnf ; if find returns -1 we error
+
 I_STATE
 I_0BRANCH .interp_word
+; comp_word
 call ECR32 ; TODO, add IMMEDIATE handling
 I_AGAIN
 .interp_word:
@@ -890,14 +928,24 @@ call SWAP
 call POP
 I_STATE
 I_0BRANCH .interp_number
+; comp_number
 call LITERAL
 .interp_number:
 I_AGAIN
-I_CONST 1
-I_CONST 1
-call SYSCALL_
-I_AGAIN
+.errnf:
+call POP
+I_ERR i_errnf, i_errnf_size
+.errni:
+I_ERR i_errni, i_errni_size
+.errnc:
+I_ERR i_errnc, i_errnc_size
 ret
+i_errnf db "error: FIND returned -1", 0xA
+i_errnf_size equ $ - i_errnf
+i_errni db "error: encountered NO_INTERPRET with STATE 0", 0xA
+i_errni_size equ $ - i_errnf
+i_errnc db "error: encountered NO_COMPILE with STATE 1", 0xA
+i_errnc_size equ $ - i_errnf
 INTERPRET_entry:
 dd LITERAL_entry
 dd INTERPRET
