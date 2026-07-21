@@ -62,18 +62,18 @@ add %1, r15
 sub %1, r15
 %endmacro
 
+; dictionary entry offsets
 %define DE_LINK 0
 %define DE_CODE 4
 %define DE_FLAGS 8
 %define DE_NAME 9
-%define NO_INTERPRET 0b00001000 ; outer interpreter should error when it attempts to interpret this
-%define NO_INTERPRET_S 3
-%define NO_COMPILE 0b00000100 ; outer interpreter should error when it attempts to compile this
-%define NO_COMPILE_S 2
+
+; dictionary entry flags, note that NO_INTERPRET and NO_COMPILE are not recognized by the \
+; bootstrap version of the outer interpreter.
+%define NO_INTERPRET 0b00001000 ; error on interpretation attempt
+%define NO_COMPILE 0b00000100 ; error on compilation attempt
 %define HIDDEN 0b00000010 ; FIND should skip this
-%define HIDDEN_S 1
-%define IMMEDIATE 0b00000001 ; outer interpreter should attempt to interpret this instead of
-%define IMMEDIATE_S 0
+%define IMMEDIATE 0b00000001 ; outer interpreter should interpret this regardless of STATE
 
 %define TIB_MAX_SIZE 255 ; 255 instead of 256 so that we can store the current size in one byte
 %define TIB_MAX_IDX 254
@@ -837,27 +837,66 @@ db IMMEDIATE
 db "LITERAL", 0
 
 
-; INTERPRET is the main outer interpreter loop
+; helper macros to make INTERPRET easier to write
+
+; push the value of the interpreter's `state` variable
+%macro I_STATE 0
+call aINTERPS
+call LIT
+dq 8
+call PLUS
+call FETCHb
+%endmacro
+
+; push a constant
+%macro I_CONST 1
+call LIT
+dq %1
+%endmacro
+
+; branch to a label if zero, makes writing calls to 0BR \
+; closer to the syntax of `jz label`
+%macro I_0BRANCH 1
+call _0BR
+dd %1 - ($ + 4)
+%endmacro
+
+; jump back to the start of INTERPRET
+%macro I_AGAIN 0
+I_CONST 0
+I_0BRANCH INTERPRET
+%endmacro
+
+; INTERPRET is the bootstrap outer interpreter.
+; Note that it does not handle any flags other than \
+; HIDDEN (implicitly through FIND) and IMMEDIATE,
+; and it does not handle errors in FIND.
 INTERPRET:
 call WORD_
 call DUP
 call NUMBERq
-call _0BR
-dd .number - ($ + 4)
+I_0BRANCH .number
 call POP
 call FIND
+I_STATE
+I_0BRANCH .interp_word
+call ECR32 ; TODO, add IMMEDIATE handling
+I_AGAIN
+.interp_word:
 call EXECUTE
-call LIT
-dq 0
-call _0BR
-dd INTERPRET - ($ + 4)
+I_AGAIN
 .number:
 call SWAP
 call POP
-call LIT
-dq 0
-call _0BR
-dd INTERPRET - ($ + 4)
+I_STATE
+I_0BRANCH .interp_number
+call LITERAL
+.interp_number:
+I_AGAIN
+I_CONST 1
+I_CONST 1
+call SYSCALL_
+I_AGAIN
 ret
 INTERPRET_entry:
 dd LITERAL_entry
@@ -872,6 +911,7 @@ latest_def dd INTERPRET_entry ; image-relative address, resPTR it before derefer
 here dd HERE_START ; also image-relative
 state db 0 ; 0 = interpreting, 1 = compiling
 scan_start db 0 ; used to restore WORD parse state, copy of tib_idx
+compile_start dd 0 ; will be used later for colon definitions to patch code pointers, currently does nothing
 tib_idx db 0 ; current point in tib we're at, if add tib to this and resPTR it you get a valid string pointer
 tib_len db 0 ; current amount of bytes in tib
 tib times TIB_MAX_SIZE db 0 ; no delimiter on this string, be very careful about bounds checks!
