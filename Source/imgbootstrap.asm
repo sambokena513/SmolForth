@@ -84,9 +84,7 @@ sub %1, r15
 %define AT_FDCWD -100
 
 ; entry point, image executes one word and then exits, for multiple words the user can type INTERPRET
-call WORD_
-call FIND
-jmp EXECUTE
+call INTERPRET
 ret
 
 ; test word that we use to verify image integrity,
@@ -837,6 +835,34 @@ db IMMEDIATE
 db "LITERAL", 0
 
 
+; ABORT prints an error message and empties the TIB,
+; it takes the image-relative address of the string to print.
+ABORT:
+dPOP rsi
+resPTR rsi
+xor rdx, rdx
+
+.loop:
+mov al, [rsi + rdx]
+test al, al
+jz .end_loop
+inc rdx
+jmp .loop
+.end_loop:
+
+mov rax, 1
+mov rdi, 1
+syscall
+
+mov byte [rel tib_len], 0
+mov byte [rel tib_idx], 0
+ret
+ABORT_entry:
+dd LITERAL_entry
+dd ABORT
+db 0
+db "ABORT", 0
+
 ; helper macros to make INTERPRET easier to write
 
 ; var offsets
@@ -878,23 +904,9 @@ I_0BRANCH INTERPRET
 %endmacro
 
 ; handle an error with a message and jump back to the start of INTERPRET
-%macro I_ERR 2
-I_CONST 0
-call DUP
-call DUP
-I_CONST %2
+%macro I_ERR 1
 I_CONST %1
-call BASE
-call PLUS
-I_CONST 1
-I_CONST 1
-call SYSCALL_ ; print err message to stdout
-call POP
-I_SOFFSET I_O_TIBLEN
-call FETCHb
-I_SOFFSET I_O_TIBIDX
-call STOREb
-call CLEAR ; empty TIB so we don't continue interpreting after error
+call ABORT
 I_AGAIN
 %endmacro
 
@@ -934,20 +946,17 @@ call LITERAL
 I_AGAIN
 .errnf:
 call POP
-I_ERR i_errnf, i_errnf_size
+I_ERR i_errnf
 .errni:
-I_ERR i_errni, i_errni_size
+I_ERR i_errni
 .errnc:
-I_ERR i_errnc, i_errnc_size
+I_ERR i_errnc
 ret
-i_errnf db "error: FIND returned -1", 0xA
-i_errnf_size equ $ - i_errnf
-i_errni db "error: encountered NO_INTERPRET with STATE 0", 0xA
-i_errni_size equ $ - i_errnf
-i_errnc db "error: encountered NO_COMPILE with STATE 1", 0xA
-i_errnc_size equ $ - i_errnf
+i_errnf db "error: FIND returned -1", 0xA, 0
+i_errni db "error: encountered NO_INTERPRET with STATE 0", 0xA, 0
+i_errnc db "error: encountered NO_COMPILE with STATE 1", 0xA, 0
 INTERPRET_entry:
-dd LITERAL_entry
+dd ABORT_entry
 dd INTERPRET
 db 0
 db "INTERPRET", 0
