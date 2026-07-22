@@ -18,7 +18,7 @@
     r14 holds the TOS pointer, and [r14] the TOS value.
     Note that the data stack grows upwards as values are added, and is not bounds-checked,
     we assume that the user will be disciplined enough to not make words that leak stack memory,
-    and not use more 8192 intermediate values at a time (the amount of 64-bit values the 32KB stack can hold).
+    and not use more than 8192 intermediate values at a time (the amount of 64-bit values the 32KB stack can hold).
 
     The image is 2GiB so that we can always compile word calls as `call rel32` (subroutine-threading), as for why it's not shorter with a possible later call to ftruncate that's because the image memory also serves as the heap for any programs inside it, meaning that dynamically allocating programs might choose to make their allocations in the image, and if they're storing for example pictures, files, or other data structures they may very well need the 2GiB.
     MAP_PRIVATE is used rather than MAP_SHARED so that users can verify their image does not contain illegal intermediate state, and save it purposefully with words like SAVE-IMG and BACKUP-IMG rather than writeback happening automatically.

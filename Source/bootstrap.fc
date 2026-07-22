@@ -8,7 +8,7 @@ aINTERPS @d aINTERPS 4 + @d !d // store link pointing to the current latest_def 
 aINTERPS 4 + DUP @d 4 + SWAP !d // add HERE, 4
 WORD GREET FIND 4 + @d aINTERPS 4 + @d !d // store code pointer for GREET at HERE
 aINTERPS 4 + DUP @d 4 + SWAP !d // add HERE, 4
-0 aINTERPS 4 + @d !b // give the word default behaviour
+1 aINTERPS 4 + @d !b // make the word immediate
 aINTERPS 4 + DUP @d 1 + SWAP !d // add HERE, 1
 63 aINTERPS 4 + @d !b // store '?' character at HERE
 aINTERPS 4 + DUP @d 1 + SWAP !d // add HERE, 1

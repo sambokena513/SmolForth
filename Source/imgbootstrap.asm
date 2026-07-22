@@ -897,10 +897,15 @@ call _0BR
 dd %1 - ($ + 4)
 %endmacro
 
+; unconditional branch
+%macro I_BRANCH 1
+I_CONST 0
+I_0BRANCH %1
+%endmacro
+
 ; jump back to the start of INTERPRET
 %macro I_AGAIN 0
-I_CONST 0
-I_0BRANCH INTERPRET
+I_BRANCH INTERPRET
 %endmacro
 
 ; handle an error with a message and jump back to the start of INTERPRET
@@ -910,15 +915,26 @@ call ABORT
 I_AGAIN
 %endmacro
 
+; push the value of a dict entry's flag
+; note that this does not shift, 
+; so if the flag is on the third bit for example \
+; and is set you get 4, not 1
+%macro I_FLAG 1
+I_CONST DE_FLAGS
+call PLUS
+call FETCHb
+I_CONST %1
+call AND_
+%endmacro
 
-; INTERPRET is the outer interpreter.
-; TODO: add handling for IMMEDIATE, NO_COMPILE, and NO_INTERPRET
+
+; INTERPRET is the bootstrap outer interpreter.
 INTERPRET:
 call WORD_
 call DUP
 call NUMBERq
 I_0BRANCH .number
-call POP
+call POP ; pop NUMBER?'s placeholder value
 call FIND
 
 ; handle error in FIND
@@ -929,7 +945,13 @@ I_0BRANCH .errnf ; if find returns -1 we error
 
 I_STATE
 I_0BRANCH .interp_word
-; comp_word
+
+call DUP ; duplicate the result of FIND
+I_FLAG IMMEDIATE
+I_0BRANCH .comp_word ; if flag is not set, compile
+I_BRANCH .interp_word ; else interpret
+
+.comp_word:
 call ECR32 ; TODO, add IMMEDIATE handling
 I_AGAIN
 .interp_word:
@@ -937,7 +959,7 @@ call EXECUTE
 I_AGAIN
 .number:
 call SWAP
-call POP
+call POP ; pop duplicate result of WORD
 I_STATE
 I_0BRANCH .interp_number
 ; comp_number
@@ -945,7 +967,7 @@ call LITERAL
 .interp_number:
 I_AGAIN
 .errnf:
-call POP
+call POP ; pop duplicate result of FIND
 I_ERR i_errnf
 .errni:
 I_ERR i_errni
