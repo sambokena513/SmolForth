@@ -83,6 +83,8 @@ sub %1, r15
 %define O_RDWR 2
 %define AT_FDCWD -100
 
+db "FIF" ; magic
+
 ; entry point, image executes one word and then exits, for multiple words the user can type INTERPRET
 call INTERPRET
 ret

@@ -74,6 +74,17 @@ _start:
   ; put the image base address in r15, set up the TOS pointer in r14,
   ; and then call the image base address
 
+  mov rax, [rsp] ; argc
+  cmp rax, 2 ; need at least one arg
+  jl .no_arg
+  mov rax, [rsp + 16]
+  mov [rel filepath_ptr], rax
+  jmp .begin
+  .no_arg:
+  lea rax, [rel filename_fallback]
+  mov [rel filepath_ptr], rax
+  .begin:
+
   SYS_MMAP 32 * KB, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0
 
   test rax, rax
@@ -85,9 +96,9 @@ _start:
 
   .success_stack_mmap:
   mov r14, rax ; put the TOS pointer into the reserved register
-  mov [stck_ptr], rax ; so we can unmap it later
+  mov [rel stck_ptr], rax ; so we can unmap it later
 
-  SYS_OPENAT AT_FDCWD, filepath, O_RDWR, 0
+  SYS_OPENAT AT_FDCWD, [rel filepath_ptr], O_RDWR, 0
 
   test rax, rax
   jns .success_img_openat
@@ -96,9 +107,9 @@ _start:
   jmp .stack_munmap ; clean up
 
   .success_img_openat:
-  mov [img_fd], rax
+  mov [rel img_fd], rax
 
-  SYS_FTRUNCATE [img_fd], 2 * GB
+  SYS_FTRUNCATE [rel img_fd], 2 * GB
 
   test rax, rax
   jns .success_img_ftruncate
@@ -106,7 +117,7 @@ _start:
   SYS_WRITE warnftruncatemsg, warnftruncatemsg_size
 
   .success_img_ftruncate:
-  SYS_MMAP 2 * GB, PROT_READ | PROT_WRITE | PROT_EXEC, MAP_PRIVATE, [img_fd], 0
+  SYS_MMAP 2 * GB, PROT_READ | PROT_WRITE | PROT_EXEC, MAP_PRIVATE, [rel img_fd], 0
 
   test rax, rax
   jns .success_img_mmap
@@ -116,16 +127,17 @@ _start:
 
   .success_img_mmap:
   mov r15, rax
+  add rax, 3
 
-  call r15 ; run Forth
+  call rax ; run Forth
 
   SYS_MUNMAP r15, 2 * GB
 
   .close_img:
-  SYS_CLOSE [img_fd]
+  SYS_CLOSE [rel img_fd]
 
   .stack_munmap:
-  SYS_MUNMAP [stck_ptr], 32 * KB
+  SYS_MUNMAP [rel stck_ptr], 32 * KB
 
   .exit:
   ; sys_exit
@@ -136,11 +148,12 @@ _start:
 section .data
 errmmapmsg db "exiting due to mmap failing", 0xA
 errmmapmsg_size equ $ - errmmapmsg
-filepath db "img.bin", 0
+filename_fallback db "img.bin", 0
 erropenatmsg db "exiting due to openat failing", 0xA
 erropenatmsg_size equ $ - erropenatmsg
 warnftruncatemsg db "warning: could not extend image to 2 GiB", 0xA
 warnftruncatemsg_size equ $ - warnftruncatemsg
 section .bss
+filepath_ptr resq 1 ; filepath of the image
 img_fd resq 1 ; to hold the file descriptor of img
 stck_ptr resq 1 ; holds the data stack pointer so we can unmap it later
