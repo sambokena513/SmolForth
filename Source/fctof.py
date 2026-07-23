@@ -3,6 +3,9 @@
 # this script is probably horribly slow but it doesn't need to be good
 # just to work
 
+import os
+os.chdir("../Source")
+
 class Macro:
     def __init__(self, name: str, body: list[str]) -> None:
         self.name: str = name
@@ -90,6 +93,7 @@ def parse_macro_call(s: str) -> tuple[str, list[str], int]:
 
         if c.strip() == "":
             consumed += 1
+            args[currarg] += c
             i += 1
 
         elif c == ">" and depth == 0:
@@ -136,7 +140,6 @@ def expand_macros(words: list[str], macros: dict[str, Macro]):
                     break
         else:
             return expanded
-
 
 with open("bootstrap.fc", "r") as inp:
     with open("bootstrap.f", "w") as out:
