@@ -2,16 +2,25 @@
 // the system this is built for does not support comments.
 // To run this, copy it to a different file and then \
 // remove everything from each `//` to the next newline.
+// In addition to comments, .fc files also support basic macros,
+// defined with $define [argnum] [name] [body] $enddef
+// Note that all macros must be defined at the start of the file.
+
+$define aHERE  aINTERPS 4 + $enddef
+$define HERE  $aHERE @d $enddef
+$define ALLOT  $0 $HERE + $aHERE !d $enddef
+$define LATEST  aINTERPS @d $enddef
 
 
-aINTERPS @d aINTERPS 4 + @d !d // store link pointing to the current latest_def at HERE
-aINTERPS 4 + DUP @d 4 + SWAP !d // add HERE, 4
-WORD GREET FIND 4 + @d aINTERPS 4 + @d !d // store code pointer for GREET at HERE
-aINTERPS 4 + DUP @d 4 + SWAP !d // add HERE, 4
-1 aINTERPS 4 + @d !b // make the word immediate
-aINTERPS 4 + DUP @d 1 + SWAP !d // add HERE, 1
+$HERE // push HERE so we can later patch latest_def
+$LATEST $HERE !d // store link pointing to the current latest_def at HERE
+$ALLOT<4>
+WORD GREET FIND 4 + @d $HERE !d // store code pointer for GREET at HERE
+$ALLOT<4>
+1 $HERE !b // make the word immediate
+$ALLOT<1>
 63 aINTERPS 4 + @d !b // store '?' character at HERE
-aINTERPS 4 + DUP @d 1 + SWAP !d // add HERE, 1
+$ALLOT<1>
 0 aINTERPS 4 + @d !b // store '\000' at HERE
-aINTERPS 4 + DUP @d 1 + SWAP !d // add HERE, 1
-11 aINTERPS 4 + @d - aINTERPS !d // patch latest_def to contain the new word
+$ALLOT<1>
+aINTERPS !d // patch latest_def to contain the new word
