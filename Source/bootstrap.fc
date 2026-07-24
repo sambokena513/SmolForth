@@ -6,21 +6,38 @@
 // defined with $define [argnum] [name] [body] $enddef
 // Note that all macros must be defined at the start of the file.
 
+// addresses
 $define aHERE  aINTERPS 4 + $enddef
+$define aSTATE  aINTERPS 8 + $enddef
+$define aSCAN_START  aINTERPS 9 + $enddef
+$define aCOMP_START  aINTERPS 10 + $enddef
+
+// variables
 $define HERE  $aHERE @d $enddef
-$define ALLOT  $0 $HERE + $aHERE !d $enddef
+$define COMP_START  $aCOMP_START @d $enddef
 $define LATEST  aINTERPS @d $enddef
 
+// actions
+$define ALLOT  $0 $HERE + $aHERE !d $enddef
+$define ,b  $0 $HERE !b $ALLOT<1> $enddef
+$define ,d  $0 $HERE !d $ALLOT<4> $enddef
+$define COMPILE  WORD $0 FIND ECR32 $enddef
+
+// bootstrap code
 
 $HERE // push HERE so we can later patch latest_def
-$LATEST $HERE !d // store link pointing to the current latest_def at HERE
-$ALLOT<4>
-WORD GREET FIND 4 + @d $HERE !d // store code pointer for GREET at HERE
-$ALLOT<4>
-1 $HERE !b // make the word immediate
-$ALLOT<1>
-63 aINTERPS 4 + @d !b // store '?' character at HERE
-$ALLOT<1>
-0 aINTERPS 4 + @d !b // store '\000' at HERE
-$ALLOT<1>
+
+$,d<$LATEST> // set link to latest_def
+$,d<9> // set code pointer to GREET for placeholder behaviour
+$,b<0> // give the word default behaviour
+$,b<67> $,b<82> $,b<69> $,b<65> $,b<84> $,b<69> $,b<0> // name the word CREATE
+
 aINTERPS !d // patch latest_def to contain the new word
+
+$HERE $aCOMP_START !d // store code start pointer here
+
+$COMPILE<WORD> // get input
+$COMPILE<.> // placeholder; print string pointer
+$,b<-61> // ret
+
+$COMP_START WORD CREATE FIND 4 + !d // patch code pointer for CREATE
