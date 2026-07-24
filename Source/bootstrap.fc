@@ -20,24 +20,72 @@ $define LATEST  aINTERPS @d $enddef
 // actions
 $define ALLOT  $0 $HERE + $aHERE !d $enddef
 $define ,b  $0 $HERE !b $ALLOT<1> $enddef
+$define ,w  $0 $HERE !w $ALLOT<2> $enddef
 $define ,d  $0 $HERE !d $ALLOT<4> $enddef
+$define ,q  $0 $HERE !q $ALLOT<8> $enddef
 $define COMPILE  WORD $0 FIND ECR32 $enddef
 
-// bootstrap code
+$define CREATE
 
 $HERE // push HERE so we can later patch latest_def
 
 $,d<$LATEST> // set link to latest_def
 $,d<9> // set code pointer to GREET for placeholder behaviour
 $,b<0> // give the word default behaviour
-$,b<67> $,b<82> $,b<69> $,b<65> $,b<84> $,b<69> $,b<0> // name the word CREATE
+$0 $,b<0> // name the word
 
-aINTERPS !d // patch latest_def to contain the new word
+aINTERPS !d // patch latest_def
 
-$HERE $aCOMP_START !d // store code start pointer here
+$enddef
 
-$COMPILE<WORD> // get input
-$COMPILE<.> // placeholder; print string pointer
+
+
+// bootstrap code
+
+// [
+$CREATE<$,b<91>>
+
+1 WORD [ FIND 8 + !b // make [ an immediate word
+
+$HERE $aCOMP_START !d
+
+// set mode to interpreting
+$COMPILE<LIT>
+$,q<0>
+$COMPILE<aINTERPS>
+$COMPILE<LIT>
+$,q<8>
+$COMPILE<+>
+$COMPILE<!b>
+$,b<-61>
+
+$COMP_START WORD [ FIND 4 + !d
+
+
+// ]
+$CREATE<$,b<93>>
+
+$HERE $aCOMP_START !d
+
+// set mode to compiling
+$COMPILE<LIT>
+$,q<1>
+$COMPILE<aINTERPS>
+$COMPILE<LIT>
+$,q<8>
+$COMPILE<+>
+$COMPILE<!b>
+$,b<-61>
+
+$COMP_START WORD ] FIND 4 + !d
+
+
+// CREATE
+$CREATE<$,b<67> $,b<82> $,b<69> $,b<65> $,b<84> $,b<69>>
+
+$HERE $aCOMP_START !d
+
+] WORD . [ // get input and print it (placeholder)
 $,b<-61> // ret
 
-$COMP_START WORD CREATE FIND 4 + !d // patch code pointer for CREATE
+$COMP_START WORD CREATE FIND 4 + !d

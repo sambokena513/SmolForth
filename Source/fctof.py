@@ -99,7 +99,7 @@ def parse_macro_call(s: str) -> tuple[str, list[str], int]:
         elif c == ">" and depth == 0:
             break
 
-        elif c == "," and depth == 0:
+        elif c == "|" and depth == 0:
             args.append("")
             currarg += 1
             i += 1
@@ -123,21 +123,23 @@ def parse_macro_call(s: str) -> tuple[str, list[str], int]:
 def expand_macros(words: list[str], macros: dict[str, Macro]):
     expanded = words
 
-    for i, word in enumerate(words):
-        if word.startswith("$"):
-            name, args, consumed = parse_macro_call(" ".join(words[i:]))
-            expanded = words[:i] + macros[name].expand(args) + words[i+consumed:]
-            break
+    def expand_one():
+        nonlocal words, expanded
+        for i, word in enumerate(words):
+            if word.startswith("$"):
+                name, args, consumed = parse_macro_call(" ".join(words[i:]))
+                # we do a flatmap here to allow one level of multi-token arguments in macro calls
+                # any more would be a pain to implement and this is sufficient for our bootstrapping needs
+                expanded = words[:i] + [y.strip() for x in macros[name].expand(args) for y in str.split(x)] + words[i+consumed:]
+                return
+
+    expand_one()
 
     while True:
         if expanded != words:
             words = expanded
 
-            for i, word in enumerate(words):
-                if word.startswith("$"):
-                    name, args, consumed = parse_macro_call(" ".join(words[i:]))
-                    expanded = words[:i] + macros[name].expand(args) + words[i+consumed:]
-                    break
+            expand_one()
         else:
             return expanded
 
