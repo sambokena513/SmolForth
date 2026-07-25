@@ -157,7 +157,9 @@ $HERE $aCOMP_START !d
 
 ]
 
-aINTERPS ,d // link
+HERE // push here so we can patch latest_def later
+
+aINTERPS @d ,d // link
 9 ,d // code
 0 ,b // flags
 
@@ -167,12 +169,15 @@ WORD
 [ HERE ] // push address we'll jump to
 
 // placeholder code to test if loops work
-DUP .
--1 +
+DUP @b ,b
+1 +
 
-DUP
-0BR [ 22 ,d ] // skip to ret instr
+DUP @b
+0BR [ 22 ,d ] // end loop
 0 0BR [ HERE 4 + SWAP - ,d ] // jump to start of loop
+
+POP // remove WORD result
+aINTERPS !d // patch latest_def
 
 [
 

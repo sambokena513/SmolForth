@@ -1443,7 +1443,9 @@ aINTERPS
 +
 !d
 ]
+HERE
 aINTERPS
+@d
 ,d
 9
 ,d
@@ -1454,10 +1456,12 @@ WORD
 HERE
 ]
 DUP
-.
--1
+@b
+,b
+1
 +
 DUP
+@b
 0BR
 [
 22
@@ -1473,6 +1477,9 @@ SWAP
 -
 ,d
 ]
+POP
+aINTERPS
+!d
 [
 -61
 ,b
