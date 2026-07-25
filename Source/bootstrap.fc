@@ -176,6 +176,8 @@ DUP @b
 0BR [ 22 ,d ] // end loop
 0 0BR [ HERE 4 + SWAP - ,d ] // jump to start of loop
 
+0 ,b // delimit string
+
 POP // remove WORD result
 aINTERPS !d // patch latest_def
 

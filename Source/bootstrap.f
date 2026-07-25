@@ -1477,6 +1477,8 @@ SWAP
 -
 ,d
 ]
+0
+,b
 POP
 aINTERPS
 !d
