@@ -168,7 +168,6 @@ WORD
 
 [ HERE ] // push address we'll jump to
 
-// placeholder code to test if loops work
 DUP @b ,b
 1 +
 
@@ -186,3 +185,39 @@ aINTERPS !d // patch latest_def
 -61 ,b // ret
 
 $COMP_START WORD CREATE FIND 4 + !d
+
+
+CREATE aCOMP_START 
+    HERE aINTERPS 10 + !d 
+        ]
+            aINTERPS 10 +
+        [ 
+    -61 ,b aINTERPS 10 + @d 
+    aINTERPS @d 4 + !d
+
+CREATE COMP_START 
+    HERE aINTERPS 10 + !d 
+        ]
+            aCOMP_START @d
+        [ 
+    -61 ,b aINTERPS 10 + @d 
+    aINTERPS @d 4 + !d
+
+CREATE :
+    HERE aCOMP_START !d
+        ]
+            // colon makes a dictionary entry, sets COMP_START, and enters compile mode
+            CREATE HERE aCOMP_START !d ]
+        [
+    -61 ,b COMP_START
+    aINTERPS @d 4 + !d
+
+: LATEST aINTERPS @d [ -61 ,b COMP_START WORD LATEST FIND 4 + !d
+
+: IMMEDIATE LATEST 8 + @b 1 | LATEST 8 + !b [ -61 ,b COMP_START LATEST 4 + !d
+
+// COMPILE is an immediate word
+: COMPILE WORD FIND ECR32 [ -61 ,b COMP_START LATEST 4 + !d IMMEDIATE
+
+// semicolon needs to be immediate since otherwise it wouldn't exit compilation
+: ; COMPILE [ -61 ,b COMP_START LATEST 4 + !d [ -61 ,b COMP_START LATEST 4 + !d IMMEDIATE
