@@ -145,4 +145,4 @@ def expand_macros(words: list[str], macros: dict[str, Macro]):
 
 with open("bootstrap.fc", "r") as inp:
     with open("bootstrap.f", "w") as out:
-        out.write(" ".join(expand_macros(*define_macros(remove_comments(inp.read())))) + "\n")
+        out.write("\n".join(expand_macros(*define_macros(remove_comments(inp.read())))) + "\n")

@@ -80,12 +80,102 @@ $,b<-61>
 $COMP_START WORD ] FIND 4 + !d
 
 
-// CREATE
-$CREATE<$,b<67> $,b<82> $,b<69> $,b<65> $,b<84> $,b<69>>
+// aHERE
+$CREATE<$,b<97> $,b<72> $,b<69> $,b<82> $,b<69>>
 
 $HERE $aCOMP_START !d
 
-] WORD . [ // get input and print it (placeholder)
-$,b<-61> // ret
+] $aHERE [ $,b<-61>
+
+$COMP_START WORD aHERE FIND 4 + !d
+
+
+// HERE
+$CREATE<$,b<72> $,b<69> $,b<82> $,b<69>>
+
+$HERE $aCOMP_START !d
+
+] aHERE @d [ $,b<-61>
+
+$COMP_START WORD HERE FIND 4 + !d
+
+
+// ALLOT
+$CREATE<$,b<65> $,b<76> $,b<76> $,b<79> $,b<84>>
+
+$HERE $aCOMP_START !d
+
+] HERE + aHERE !d [ $,b<-61>
+
+$COMP_START WORD ALLOT FIND 4 + !d
+
+
+// ,b
+$CREATE<$,b<44> $,b<98>>
+
+$HERE $aCOMP_START !d
+
+] HERE !b 1 ALLOT [ $,b<-61>
+
+$COMP_START WORD ,b FIND 4 + !d
+
+
+// ,w
+$CREATE<44 ,b 119 ,b>
+
+$HERE $aCOMP_START !d
+
+] HERE !w 2 ALLOT [ -61 ,b
+
+$COMP_START WORD ,w FIND 4 + !d
+
+
+// ,d
+$CREATE<44 ,b 100 ,b>
+
+$HERE $aCOMP_START !d
+
+] HERE !d 4 ALLOT [ -61 ,b
+
+$COMP_START WORD ,d FIND 4 + !d
+
+
+// ,q
+$CREATE<44 ,b 113 ,b>
+
+$HERE $aCOMP_START !d
+
+] HERE !q 8 ALLOT [ -61 ,b
+
+$COMP_START WORD ,q FIND 4 + !d
+
+
+// CREATE
+$CREATE<67 ,b 82 ,b 69 ,b 65 ,b 84 ,b 69 ,b>
+
+$HERE $aCOMP_START !d
+
+]
+
+aINTERPS ,d // link
+9 ,d // code
+0 ,b // flags
+
+// name
+WORD
+
+[ HERE ] // push address we'll jump to
+
+// placeholder code to test if loops work
+DUP .
+-1 +
+
+DUP
+0BR [ 22 ,d ] // skip to ret instr
+0 0BR [ HERE 4 + SWAP - ,d ] // jump to start of loop
+
+[
+
+-61 ,b // ret
 
 $COMP_START WORD CREATE FIND 4 + !d
