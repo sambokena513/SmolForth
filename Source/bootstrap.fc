@@ -222,6 +222,9 @@ CREATE :
 // semicolon needs to be immediate since otherwise it wouldn't exit compilation
 : ; COMPILE [ -61 ,b COMP_START LATEST 4 + !d [ -61 ,b COMP_START LATEST 4 + !d IMMEDIATE
 
+// Useful for debugging without accidentally corrupting the stack.
+: PEEK DUP . ;
+
 // to make jumping to labels simpler we add -9 here,
 // this allows us to write things like [ HERE ] to push an address \
 // and then [ HERE SWAP - ] 0BRANCH to compile a jump to that address
@@ -237,4 +240,15 @@ CREATE :
 // block of memory it owns, who's size is the argument to VARIABLE.
 // So it could be used like CELL VARIABLE X to make a variable called X with \
 // a size of 8 bytes.
-: VARIABLE CREATE HERE LATEST 4 + !d HERE 14 + COMPILE LITERAL -61 ,b ALLOT ; IMMEDIATE
+// Note that VARIABLE shouldn't be called inside colon definitions, this is because \
+// it is a defining word and would corrupt COMP_START as well as LATEST for the word that called it.
+: VARIABLE CREATE HERE LATEST 4 + !d HERE 14 + COMPILE LITERAL -61 ,b ALLOT ;
+
+// TODO: add compile stack and make BEGIN and AGAIN use that instead of the data stack.
+
+// BEGIN is just an immediate version of here,
+// to save space we just reuse the code pointer for here instead of compiling this like other words.
+CREATE BEGIN IMMEDIATE WORD HERE FIND 4 + @d LATEST 4 + !d
+
+// AGAIN pops an address and compiles an unconditional jump to it, in practice this is used to implement loops.
+: AGAIN 0 COMPILE LITERAL COMPILE [ HERE SWAP - ] COMPILE 0BRANCH ; IMMEDIATE
