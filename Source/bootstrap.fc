@@ -221,3 +221,20 @@ CREATE :
 
 // semicolon needs to be immediate since otherwise it wouldn't exit compilation
 : ; COMPILE [ -61 ,b COMP_START LATEST 4 + !d [ -61 ,b COMP_START LATEST 4 + !d IMMEDIATE
+
+// to make jumping to labels simpler we add -9 here,
+// this allows us to write things like [ HERE ] to push an address \
+// and then [ HERE SWAP - ] 0BRANCH to compile a jump to that address
+: 0BRANCH [ WORD 0BR FIND ] LITERAL ECR32 -9 + ,d ; IMMEDIATE
+
+// CELL is a bit less important in this Forth compared to more normal ones,
+// since we emit native code and the dictionary as well as the bodies of \
+// words are often not aligned, but it still doesn't hurt to define it.
+: CELL 8 ;
+
+// VARIABLE is relatively complicated, but essentially we \
+// create a new word, and make that word push the address of a \
+// block of memory it owns, who's size is the argument to VARIABLE.
+// So it could be used like CELL VARIABLE X to make a variable called X with \
+// a size of 8 bytes.
+: VARIABLE CREATE HERE LATEST 4 + !d HERE 14 + COMPILE LITERAL -61 ,b ALLOT ; IMMEDIATE
