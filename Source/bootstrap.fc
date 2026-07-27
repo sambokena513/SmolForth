@@ -227,6 +227,8 @@ CREATE :
 
 // 0BRANCH is to 0BR what LITERAL is to LIT.
 : 0BRANCH [ WORD 0BR FIND ] LITERAL ECR32 ,d ; IMMEDIATE
+// unconditional branch
+: BRANCH 0 COMPILE LITERAL COMPILE 0BRANCH ; IMMEDIATE
 
 // Since this Forth is untyped, the only thing we \
 // really care about is the *size* of a variable,
@@ -257,4 +259,17 @@ CSTCK CSPTR !w
 // C> pops one value from the control flow stack
 : C> CSPTR @w DWORD_T SWAP - CSPTR !w CSPTR @w @d ;
 
-// TODO: BEGIN, AGAIN, UNTIL, WHILE, IF, THEN, ELSE
+// read the value at the top of the control flow stack without popping it
+: C@ CSPTR @w DWORD_T SWAP - @d ;
+
+// conditionals
+: IF 0 COMPILE 0BRANCH HERE >C ; IMMEDIATE
+: THEN C@ HERE - C> -4 + !d  ; IMMEDIATE
+: ELSE 0 COMPILE BRANCH HERE COMPILE THEN >C ; IMMEDIATE
+
+// loops
+: BEGIN HERE >C ; IMMEDIATE
+: UNTIL C> HERE 9 + SWAP - COMPILE 0BRANCH ; IMMEDIATE
+: AGAIN C> HERE 22 + SWAP - COMPILE BRANCH ; IMMEDIATE
+
+// TODO: WHILE, REPEAT
