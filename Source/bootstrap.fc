@@ -271,5 +271,18 @@ CSTCK CSPTR !w
 : BEGIN HERE >C ; IMMEDIATE
 : UNTIL C> HERE 9 + SWAP - COMPILE 0BRANCH ; IMMEDIATE
 : AGAIN C> HERE 22 + SWAP - COMPILE BRANCH ; IMMEDIATE
+: REPEAT C> C> SWAP >C >C COMPILE AGAIN COMPILE ELSE C> POP ; IMMEDIATE
+// WHILE is semantically just IF so we don't compile a separate code body for it,
+// but it's useful to have a separate dictionary entry so that code is more readable.
+// After all, BEGIN IF REPEAT is a bit weird and makes it unclear whether there should be a THEN.
+CREATE WHILE IMMEDIATE WORD IF FIND 4 + @d LATEST 4 + !d
 
-// TODO: WHILE, REPEAT
+// "emit jump rel32", this is used for tail calls
+: EJR32 -23 ,b 4 + @d HERE 4 + SWAP - ,d ;
+
+// Since semicolon patches a word's code address this means that writing \
+// `: A A ;` will actually not recurse, but rather call the placeholder \
+// code pointer that CREATE gives A, so we provide SELF for recursion instead.
+: SELF aCOMP_START -4 + ECR32 ; IMMEDIATE
+// tail call version of SELF
+: TSELF aCOMP_START -4 + EJR32 ; IMMEDIATE
