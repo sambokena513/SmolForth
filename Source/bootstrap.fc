@@ -225,15 +225,16 @@ CREATE :
 // Useful for debugging without accidentally corrupting the stack.
 : PEEK DUP . ;
 
-// to make jumping to labels simpler we add -9 here,
-// this allows us to write things like [ HERE ] to push an address \
-// and then [ HERE SWAP - ] 0BRANCH to compile a jump to that address
-: 0BRANCH [ WORD 0BR FIND ] LITERAL ECR32 -9 + ,d ; IMMEDIATE
+// 0BRANCH is to 0BR what LITERAL is to LIT.
+: 0BRANCH [ WORD 0BR FIND ] LITERAL ECR32 ,d ; IMMEDIATE
 
-// CELL is a bit less important in this Forth compared to more normal ones,
-// since we emit native code and the dictionary as well as the bodies of \
-// words are often not aligned, but it still doesn't hurt to define it.
-: CELL 8 ;
+// Since this Forth is untyped, the only thing we \
+// really care about is the *size* of a variable,
+// these words define the common data widths.
+: BYTE_T 1 ;
+: WORD_T 2 ;
+: DWORD_T 4 ;
+: QWORD_T 8 ;
 
 // VARIABLE is relatively complicated, but essentially we \
 // create a new word, and make that word push the address of a \
@@ -242,13 +243,18 @@ CREATE :
 // a size of 8 bytes.
 // Note that VARIABLE shouldn't be called inside colon definitions, this is because \
 // it is a defining word and would corrupt COMP_START as well as LATEST for the word that called it.
-: VARIABLE CREATE HERE LATEST 4 + !d HERE 14 + COMPILE LITERAL -61 ,b ALLOT ;
+: VARIABLE CREATE HERE LATEST 4 + !d HERE 14 + COMPILE LITERAL -61 ,b ALLOT ; 
 
-// TODO: add compile stack and make BEGIN and AGAIN use that instead of the data stack.
+// CSTCK is the control flow stack, and CSPTR points to the next free slot in it.
+WORD_T VARIABLE CSPTR
+64 DWORD_T * VARIABLE CSTCK
+// initialize the stack pointer to index 0 in the control flow stack
+CSTCK CSPTR !w
 
-// BEGIN is just an immediate version of here,
-// to save space we just reuse the code pointer for here instead of compiling this like other words.
-CREATE BEGIN IMMEDIATE WORD HERE FIND 4 + @d LATEST 4 + !d
+// >C puts one value into the control flow stack
+: >C CSPTR @w !d CSPTR @w DWORD_T + CSPTR !w ;
 
-// AGAIN pops an address and compiles an unconditional jump to it, in practice this is used to implement loops.
-: AGAIN 0 COMPILE LITERAL COMPILE [ HERE SWAP - ] COMPILE 0BRANCH ; IMMEDIATE
+// C> pops one value from the control flow stack
+: C> CSPTR @w DWORD_T SWAP - CSPTR !w CSPTR @w @d ;
+
+// TODO: BEGIN, AGAIN, UNTIL, WHILE, IF, THEN, ELSE
