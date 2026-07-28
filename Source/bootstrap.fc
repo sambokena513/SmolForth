@@ -277,6 +277,36 @@ CSTCK CSPTR !w
 // After all, BEGIN IF REPEAT is a bit weird and makes it unclear whether there should be a THEN.
 CREATE WHILE IMMEDIATE WORD IF FIND 4 + @d LATEST 4 + !d
 
+// INT64_MIN doubles as a mask for the sign bit
+: INT64_MIN -9223372036854775808 ;
+: INT64_MAX 9223372036854775807 ;
+
+// comparison operators
+: 0== IF 0 ELSE -1 THEN ;
+: 0<> IF -1 ELSE 0 THEN ;
+: -? INT64_MIN & IF -1 ELSE 0 THEN ;
+: +? INT64_MIN & IF 0 ELSE -1 THEN ;
+: == - IF 0 ELSE -1 THEN ;
+: <> - IF -1 ELSE 0 THEN ;
+: < 
+    OVER -? OVER -? == // check if signs are equal
+    IF
+        - -? // same sign means we can subtract safely and check if result is smaller than 0
+    ELSE
+        SWAP POP -? // we don't need b anymore so we remove it, and return sign of a
+    THEN
+;
+: <= OVER OVER == IF -1 ELSE < THEN ;
+: > 
+    OVER -? OVER -? == // check if signs are equal
+    IF
+        - +? // same sign means we can subtract safely and check if result is greater than 0
+    ELSE
+        SWAP POP +? // we don't need b anymore so we remove it, and return the opposite of the sign of a
+    THEN
+;
+: >= OVER OVER == IF -1 ELSE > THEN ;
+
 // "emit jump rel32", this is used for tail calls
 : EJR32 -23 ,b 4 + @d HERE 4 + SWAP - ,d ;
 

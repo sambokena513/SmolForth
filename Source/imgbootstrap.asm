@@ -742,8 +742,7 @@ db "0BR", 0
 
 
 DUP:
-dPOP rax
-dPUSH rax
+mov rax, [r14]
 dPUSH rax
 ret
 DUP_entry:
@@ -754,16 +753,27 @@ db "DUP", 0
 
 
 SWAP:
-dPOP rax
-dPOP rbx
-dPUSH rax
-dPUSH rbx
+mov rax, [r14]
+mov rbx, [r14 - 8]
+mov [r14], rbx
+mov [r14 - 8], rax
 ret
 SWAP_entry:
 dd DUP_entry
 dd SWAP
 db 0
 db "SWAP", 0
+
+
+OVER:
+mov rax, [r14 - 8]
+dPUSH rax
+ret
+OVER_entry:
+dd SWAP_entry
+dd OVER
+db 0
+db "OVER", 0
 
 
 ; Basic syscall wrapper, takes 6 args and pushes the return value
@@ -779,7 +789,7 @@ syscall
 dPUSH rax
 ret
 SYSCALL__entry:
-dd SWAP_entry
+dd OVER_entry
 dd SYSCALL_
 db 0
 db "SYSCALL", 0
@@ -793,6 +803,26 @@ dd SYSCALL__entry
 dd BASE
 db 0
 db "BASE", 0
+
+
+RSPTR:
+dPUSH rsp
+ret
+RSPTR_entry:
+dd BASE_entry
+dd RSPTR
+db 0
+db "RSPTR", 0
+
+
+DSPTR:
+dPUSH r14
+ret
+DSPTR_entry:
+dd RSPTR_entry
+dd DSPTR
+db 0
+db "DSPTR", 0
 
 
 ; ECR32 emits a `call rel32` instruction at HERE, and moves HERE past it.
@@ -814,7 +844,7 @@ mov [r15 + rbx + 1], eax ; store the rel32 offset
 add dword [rel here], 5
 ret
 ECR32_entry:
-dd BASE_entry
+dd DSPTR_entry
 dd ECR32
 db 0
 db "ECR32", 0
