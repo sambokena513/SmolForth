@@ -434,7 +434,7 @@ db "EXIT", 0
 
 ; NUMBER? takes in a string pointer (image-relative),
 ; and attempts to parse it as a decimal integer.
-; It pushes two values to the data stack; whether it was successful (-1 or 0), and the parsed value (-1 if err).
+; It pushes two values to the data stack; whether it errored (-1 or 0), and the parsed value (-1 if err).
 NUMBERq:
 dPOP rax
 resPTR rax

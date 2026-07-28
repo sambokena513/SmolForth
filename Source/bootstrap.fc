@@ -203,24 +203,45 @@ CREATE COMP_START
     -61 ,b aINTERPS 10 + @d 
     aINTERPS @d 4 + !d
 
+CREATE LATEST 
+    HERE aINTERPS 10 + !d 
+        ]
+            aINTERPS @d
+        [ 
+    -61 ,b aINTERPS 10 + @d 
+    aINTERPS @d 4 + !d
+
+CREATE IMMEDIATE 
+    HERE aINTERPS 10 + !d 
+        ]
+            LATEST 8 + @b 1 | LATEST 8 + !b
+        [ 
+    -61 ,b aINTERPS 10 + @d 
+    LATEST 4 + !d
+
+// COMPILE is an immediate word that forces a word to be compiled even if it is immediate
+CREATE COMPILE 
+    HERE aINTERPS 10 + !d 
+        ]
+            WORD FIND ECR32
+        [ 
+    -61 ,b aINTERPS 10 + @d 
+    LATEST 4 + !d IMMEDIATE
+
 CREATE :
     HERE aCOMP_START !d
         ]
             // colon makes a dictionary entry, sets COMP_START, and enters compile mode
-            CREATE HERE aCOMP_START !d ]
+            // it also initially sets the new word's flag byte to HIDDEN so that definitions
+            // can reference older definitions of the same word
+            CREATE HERE aCOMP_START !d 2 LATEST 8 + !b ]
         [
     -61 ,b COMP_START
-    aINTERPS @d 4 + !d
+    LATEST 4 + !d
 
-: LATEST aINTERPS @d [ -61 ,b COMP_START WORD LATEST FIND 4 + !d
-
-: IMMEDIATE LATEST 8 + @b 1 | LATEST 8 + !b [ -61 ,b COMP_START LATEST 4 + !d
-
-// COMPILE is an immediate word
-: COMPILE WORD FIND ECR32 [ -61 ,b COMP_START LATEST 4 + !d IMMEDIATE
-
+// semicolon finishes a definition by compiling a `ret` and patching the code pointer as well as flag byte of the new word
 // semicolon needs to be immediate since otherwise it wouldn't exit compilation
-: ; COMPILE [ -61 ,b COMP_START LATEST 4 + !d [ -61 ,b COMP_START LATEST 4 + !d IMMEDIATE
+: ; COMPILE [ -61 ,b COMP_START LATEST 4 + !d 0 LATEST 8 + !b [ -61 ,b COMP_START LATEST 4 + !d 0 LATEST 8 + !b IMMEDIATE
 
 // Useful for debugging without accidentally corrupting the stack.
 : PEEK DUP . ;
@@ -296,23 +317,25 @@ CREATE WHILE IMMEDIATE WORD IF FIND 4 + @d LATEST 4 + !d
         SWAP POP -? // we don't need b anymore so we remove it, and return sign of a
     THEN
 ;
-: <= OVER OVER == IF -1 ELSE < THEN ;
+: <= OVER OVER == IF POP POP -1 ELSE < THEN ;
 : > 
     OVER -? OVER -? == // check if signs are equal
     IF
-        - +? // same sign means we can subtract safely and check if result is greater than 0
+        - -1 + +? // same sign means we can subtract safely and check if result is greater than 0
     ELSE
         SWAP POP +? // we don't need b anymore so we remove it, and return the opposite of the sign of a
     THEN
 ;
-: >= OVER OVER == IF -1 ELSE > THEN ;
+: >= OVER OVER == IF POP POP -1 ELSE > THEN ;
 
-// "emit jump rel32", this is used for tail calls
+// "emit jump rel32", this is used for tail calls,
+// note that since the compiler doesn't know when definitions end \
+// you have to write EJR32 manually if you want something to be compiled as a tail call.
 : EJR32 -23 ,b 4 + @d HERE 4 + SWAP - ,d ;
 
 // Since semicolon patches a word's code address this means that writing \
-// `: A A ;` will actually not recurse, but rather call the placeholder \
-// code pointer that CREATE gives A, so we provide SELF for recursion instead.
+// `: A A ;` will actually not recurse, but rather call whatever A's previous definition was
+// so we provide SELF for recursion instead.
 : SELF aCOMP_START -4 + ECR32 ; IMMEDIATE
 // tail call version of SELF
 : TSELF aCOMP_START -4 + EJR32 ; IMMEDIATE
