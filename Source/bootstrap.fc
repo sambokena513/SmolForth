@@ -339,3 +339,26 @@ CREATE WHILE IMMEDIATE WORD IF FIND 4 + @d LATEST 4 + !d
 : SELF aCOMP_START -4 + ECR32 ; IMMEDIATE
 // tail call version of SELF
 : TSELF aCOMP_START -4 + EJR32 ; IMMEDIATE
+
+// Take string pointer to filepath, attempt to open a file with it and redirect stdin to the file,
+// closing whatever fd stdin was previously.
+: LOAD
+    // duplicate return value so we can call both dup2 and close with the fd
+    >C 0 DUP DUP DUP DUP BASE C> + 2 SYSCALL // sys_open
+    DUP +? IF
+        DUP >C >C
+        0 DUP DUP DUP 0 C> 33 SYSCALL // sys_dup2
+        DUP +? IF 
+            0 DUP DUP DUP DUP C> 3 SYSCALL POP // sys_close
+            // we don't check the return value of sys_close because \
+            // stdin has already been redirected and the script we're loading \
+            // wouldn't necessarily be aware that it's being run through dup2 \
+            // rather than the terminal, and as such this would force us to introduce \
+            // either variable stack effects (very bad no good) or make every script \
+            // pop one value when it initializes "just in case".
+            // So leaving a duplicate fd open is really the lesser evil.
+        THEN // dup2 failure
+    THEN // open failure
+;
+// LOAD but invoking the outer interpreter to fetch the word, useful for source files.
+: INCLUDE WORD LOAD ;
