@@ -25,6 +25,14 @@ $define ,d  $0 $HERE !d $ALLOT<4> $enddef
 $define ,q  $0 $HERE !q $ALLOT<8> $enddef
 $define COMPILE  WORD $0 FIND ECR32 $enddef
 
+$define LITERAL 
+
+$,b<72> $,b<-72> $0
+$,b<73> $,b<-119> $,b<6>
+$,b<73> $,b<-125> $,b<-58> $,b<8>
+
+$enddef
+
 $define CREATE
 
 $HERE // push HERE so we can later patch latest_def
@@ -38,8 +46,6 @@ aINTERPS !d // patch latest_def
 
 $enddef
 
-
-
 // bootstrap code
 
 // [
@@ -50,11 +56,9 @@ $CREATE<$,b<91>>
 $HERE $aCOMP_START !d
 
 // set mode to interpreting
-$COMPILE<LIT>
-$,q<0>
+$LITERAL<$,q<0>>
 $COMPILE<aINTERPS>
-$COMPILE<LIT>
-$,q<8>
+$LITERAL<$,q<8>>
 $COMPILE<+>
 $COMPILE<!b>
 $,b<-61>
@@ -68,11 +72,9 @@ $CREATE<$,b<93>>
 $HERE $aCOMP_START !d
 
 // set mode to compiling
-$COMPILE<LIT>
-$,q<1>
+$LITERAL<$,q<1>>
 $COMPILE<aINTERPS>
-$COMPILE<LIT>
-$,q<8>
+$LITERAL<$,q<8>>
 $COMPILE<+>
 $COMPILE<!b>
 $,b<-61>
@@ -172,7 +174,7 @@ DUP @b ,b
 1 +
 
 DUP @b
-0BR [ 22 ,d ] // end loop
+0BR [ 26 ,d ] // end loop
 0 0BR [ HERE 4 + SWAP - ,d ] // jump to start of loop
 
 0 ,b // delimit string
@@ -275,7 +277,7 @@ CREATE :
 // a size of 8 bytes.
 // Note that VARIABLE shouldn't be called inside colon definitions, this is because \
 // it is a defining word and would corrupt COMP_START as well as LATEST for the word that called it.
-: VARIABLE CREATE HERE LATEST 4 + !d HERE 14 + COMPILE LITERAL -61 ,b ALLOT ;
+: VARIABLE CREATE HERE LATEST 4 + !d HERE 18 + COMPILE LITERAL -61 ,b ALLOT ;
 
 // Patch LATEST's code pointer, taking an address from the stack.
 : >CODE LATEST 4 + !d ;
@@ -306,7 +308,7 @@ CSTCK CSPTR !w
 // loops
 : BEGIN HERE >C ; IMMEDIATE
 : UNTIL C> HERE 9 + SWAP - COMPILE 0BRANCH ; IMMEDIATE
-: AGAIN C> HERE 22 + SWAP - COMPILE BRANCH ; IMMEDIATE
+: AGAIN C> HERE 26 + SWAP - COMPILE BRANCH ; IMMEDIATE
 : REPEAT C> C> SWAP >C >C COMPILE AGAIN COMPILE ELSE C> POP ; IMMEDIATE
 // WHILE is semantically just IF so we don't compile a separate code body for it,
 // but it's useful to have a separate dictionary entry so that code is more readable.
@@ -319,7 +321,7 @@ CREATE WHILE ALIAS IF IMMEDIATE
 
 // comparison operators
 : 0== IF 0 ELSE -1 THEN ;
-: 0<> IF -1 ELSE 0 THEN ;
+// no 0<> because it is semantically the same as just passing the argument directly to the branch
 : -? INT64_MIN & IF -1 ELSE 0 THEN ;
 : +? INT64_MIN & IF 0 ELSE -1 THEN ;
 : == - IF 0 ELSE -1 THEN ;

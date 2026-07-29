@@ -129,9 +129,6 @@ _start:
   .close_img:
   SYS_CLOSE [rel img_fd]
 
-  .stack_munmap:
-  SYS_MUNMAP [rel stck_ptr], 32 * KB
-
   .exit:
   ; sys_exit
   mov rax, 60
@@ -149,4 +146,3 @@ warnftruncatemsg_size equ $ - warnftruncatemsg
 section .bss
 filepath_ptr resq 1 ; filepath of the image
 img_fd resq 1 ; to hold the file descriptor of img
-stck_ptr resq 1 ; holds the data stack pointer so we can unmap it later

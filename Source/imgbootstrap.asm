@@ -711,6 +711,8 @@ dd aINTERPS
 db 0
 db "aINTERPS", 0
 
+; TODO, remove LIT and 0BR, and make LITERAL and 0BRANCH compile `mov` and `jz rel32` respectively
+; 28% branch misprediction is unacceptable
 
 LIT:
 mov rax, [rsp] ; return address
@@ -886,12 +888,27 @@ db "ECR32", 0
 ; LITERAL is an immediate word that pops a number from the data stack,
 ; and compiles it.
 LITERAL:
-dPUSH LIT_entry
-call ECR32 ; compile call to LIT
 dPOP rbx
+
 mov eax, [rel here]
-mov [r15 + rax], rbx
-add dword [rel here], 8 ; i64
+
+; mov rax, imm64
+mov byte [r15 + rax], 0x48 ; REX.W (64 bit operand size)
+mov byte [r15 + rax + 1], 0xb8 ; mov r64, imm64 opcode for rax
+mov qword [r15 + rax + 2], rbx ; imm64
+
+; mov [r14], rax
+mov byte [r15 + rax + 10], 0x49 ; REX.W + REX.B
+mov byte [r15 + rax + 11], 0x89 ; mov r/m64, r64
+mov byte [r15 + rax + 12], 0x06 ; ModRM: source - rax, dest - r14, no displacement
+
+; add r14, 8
+mov byte [r15 + rax + 13], 0x49
+mov byte [r15 + rax + 14], 0x83 ; add r/m64, r64
+mov byte [r15 + rax + 15], 0xc6 ; ModRM: reg operand, add, r14
+mov byte [r15 + rax + 16], 0x08 ; immediate value 8
+
+add dword [rel here], 17 ; advance HERE past the literal
 ret
 LITERAL_entry:
 dd ECR32_entry
@@ -951,8 +968,9 @@ call FETCHb
 
 ; push a constant
 %macro I_CONST 1
-call LIT
-dq %1
+mov rax, %1
+mov [r14], rax
+add r14, 8
 %endmacro
 
 ; branch to a label if zero, makes writing calls to 0BR \
