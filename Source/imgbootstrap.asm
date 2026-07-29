@@ -711,22 +711,9 @@ dd aINTERPS
 db 0
 db "aINTERPS", 0
 
-; TODO, remove LIT and 0BR, and make LITERAL and 0BRANCH compile `mov` and `jz rel32` respectively
-; 28% branch misprediction is unacceptable
 
-LIT:
-mov rax, [rsp] ; return address
-mov rax, [rax] ; i64
-dPUSH rax
-add [rsp], 8 ; advance past it
-ret ; return, skipping past the integer
-LIT_entry:
-dd aINTERPS_entry
-dd LIT
-db NO_INTERPRET
-db "LIT", 0
-
-
+; TODO, 0BR, and make 0BRANCH compile `jz rel32`,
+; 20% branch misprediction is unacceptable
 _0BR:
 dPOP rax
 test rax, rax
@@ -740,7 +727,7 @@ ret
 add [rsp], 4 ; skip rel32
 ret
 _0BR_entry:
-dd LIT_entry
+dd aINTERPS_entry
 dd _0BR
 db NO_INTERPRET
 db "0BR", 0
@@ -952,11 +939,17 @@ db "ABORT", 0
 %define I_O_TIBIDX 14
 %define I_O_TIBLEN 15
 
+; push a constant
+%macro I_CONST 1
+mov rax, %1
+mov [r14], rax
+add r14, 8
+%endmacro
+
 ; push the address of the interpreter state struct + offset
 %macro I_SOFFSET 1
 call aINTERPS
-call LIT
-dq %1
+I_CONST %1
 call PLUS
 %endmacro
 
@@ -964,13 +957,6 @@ call PLUS
 %macro I_STATE 0
 I_SOFFSET I_O_STATE
 call FETCHb
-%endmacro
-
-; push a constant
-%macro I_CONST 1
-mov rax, %1
-mov [r14], rax
-add r14, 8
 %endmacro
 
 ; branch to a label if zero, makes writing calls to 0BR \

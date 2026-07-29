@@ -91,7 +91,7 @@ _start:
   jns .success_img_openat
 
   SYS_WRITE erropenatmsg, erropenatmsg_size ; print err message
-  jmp .stack_munmap ; clean up
+  jmp .close_img
 
   .success_img_openat:
   mov [rel img_fd], rax
