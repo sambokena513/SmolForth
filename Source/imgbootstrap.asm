@@ -41,14 +41,14 @@ syscall
 
 ; pop a value from the data stack
 %macro dPOP 1
-mov %1, [r14]
 sub r14, 8
+mov %1, [r14]
 %endmacro
 
 ; push a value to the data stack
 %macro dPUSH 1
-add r14, 8
 mov qword [r14], %1
+add r14, 8
 %endmacro
 
 ; "resolve pointer"
@@ -109,9 +109,9 @@ db "GREET", 0
 
 ; fetch 8 bits
 FETCHb:
-mov rax, [r14]
+mov rax, [r14 - 8]
 movsx rax, byte [r15 + rax]
-mov [r14], rax
+mov [r14 - 8], rax
 ret
 FETCHb_entry:
 dd GREET_entry
@@ -121,9 +121,9 @@ db "@b", 0
 
 ; fetch 16 bits
 FETCHw:
-mov rax, [r14]
+mov rax, [r14 - 8]
 movsx rax, word [r15 + rax]
-mov [r14], rax
+mov [r14 - 8], rax
 ret
 FETCHw_entry:
 dd FETCHb_entry
@@ -133,9 +133,9 @@ db "@w", 0
 
 ; fetch 32 bits
 FETCHd:
-mov rax, [r14]
+mov rax, [r14 - 8]
 movsxd rax, dword [r15 + rax]
-mov [r14], rax
+mov [r14 - 8], rax
 ret
 FETCHd_entry:
 dd FETCHw_entry
@@ -145,9 +145,9 @@ db "@d", 0
 
 ; fetch 64 bits
 FETCHq:
-mov rax, [r14]
+mov rax, [r14 - 8]
 mov rax, [r15 + rax]
-mov [r14], rax
+mov [r14 - 8], rax
 ret
 FETCHq_entry:
 dd FETCHd_entry
@@ -742,7 +742,7 @@ db "0BR", 0
 
 
 DUP:
-mov rax, [r14]
+mov rax, [r14 - 8]
 dPUSH rax
 ret
 DUP_entry:
@@ -753,10 +753,10 @@ db "DUP", 0
 
 
 SWAP:
-mov rax, [r14]
-mov rbx, [r14 - 8]
-mov [r14], rbx
-mov [r14 - 8], rax
+mov rax, [r14 - 8]
+mov rbx, [r14 - 16]
+mov [r14 - 8], rbx
+mov [r14 - 16], rax
 ret
 SWAP_entry:
 dd DUP_entry
@@ -766,7 +766,7 @@ db "SWAP", 0
 
 
 OVER:
-mov rax, [r14 - 8]
+mov rax, [r14 - 16]
 dPUSH rax
 ret
 OVER_entry:

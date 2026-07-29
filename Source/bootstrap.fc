@@ -342,7 +342,7 @@ CREATE WHILE IMMEDIATE WORD IF FIND 4 + @d LATEST 4 + !d
 
 // Take string pointer to filepath, attempt to open a file with it and redirect stdin to the file,
 // closing whatever fd stdin was previously.
-: LOAD
+: EXEC
     // duplicate return value so we can call both dup2 and close with the fd
     >C 0 DUP DUP DUP DUP BASE C> + 2 SYSCALL // sys_open
     DUP +? IF
@@ -360,5 +360,5 @@ CREATE WHILE IMMEDIATE WORD IF FIND 4 + @d LATEST 4 + !d
         THEN // dup2 failure
     THEN // open failure
 ;
-// LOAD but invoking the outer interpreter to fetch the word, useful for source files.
-: INCLUDE WORD LOAD ;
+// Version of EXEC that gets its input in a more REPL-friendly way.
+: LOAD WORD EXEC ;

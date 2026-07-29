@@ -72,7 +72,7 @@ global _start
 _start:
   ; this file should map a 32KiB stack into memory, map a 2GiB image into memory,
   ; put the image base address in r15, set up the TOS pointer in r14,
-  ; and then call the image base address
+  ; and then call the image's entry point
 
   mov rax, [rsp] ; argc
   cmp rax, 2 ; need at least one arg
@@ -127,7 +127,7 @@ _start:
 
   .success_img_mmap:
   mov r15, rax
-  add rax, 3
+  add rax, 3 ; skip magic
 
   call rax ; run Forth
 
