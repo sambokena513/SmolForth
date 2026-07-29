@@ -424,16 +424,14 @@ db 0
 db "CLEAR", 0
 
 
-; EXIT returns to the Forth loader, assuming that it's called from the original INTERPRET call in the entry point.
-; Otherwise if you're in a nested INTERPRET call it will exit that one, and if you just call it from somewhere else \
-; then it will probably corrupt the return stack and segfault. Don't use outside of the REPL!
+; EXIT can be used to exit the REPL or to perform an early return in a word.
 EXIT:
-add rsp, 8 ; skip the address pushed by `call EXECUTE`
-ret ; return to the entry point just after `jmp EXECUTE` which returns a final time to the loader
+add rsp, 8 ; skip the address pushed by the call to EXIT itself
+ret ; return
 EXIT_entry:
 dd CLEAR_entry
 dd EXIT
-db NO_COMPILE | IMMEDIATE
+db 0
 db "EXIT", 0
 
 

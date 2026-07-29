@@ -243,6 +243,15 @@ CREATE :
 // semicolon needs to be immediate since otherwise it wouldn't exit compilation
 : ; COMPILE [ -61 ,b COMP_START LATEST 4 + !d 0 LATEST 8 + !b [ -61 ,b COMP_START LATEST 4 + !d 0 LATEST 8 + !b IMMEDIATE
 
+// With these words we round out the set of words for manipulating interpreter state.
+: aSCAN_START aINTERPS 9 + ;
+: aTIB_IDX aINTERPS 14 + ;
+: aTIB_LEN aINTERPS 15 + ;
+: aTIB aINTERPS 16 + ;
+: SCAN_START aSCAN_START @b ;
+: TIB_IDX aTIB_IDX @b ;
+: TIB_LEN aTIB_LEN @b ;
+
 // Useful for debugging without accidentally corrupting the stack.
 : PEEK DUP . ;
 
@@ -372,11 +381,62 @@ CREATE WHILE ALIAS IF IMMEDIATE
 // Takes a filepath as an argument and writes everything from the image start to HERE \
 // to it, creating the file if it does not exist.
 : IDUMP 
-    >C 0 DUP DUP 420 65 BASE C> + 2 SYSCALL // sys_open
+    // we open the file with O_APPEND, O_TRUNC, O_CREAT, and O_WRONLY
+    >C 0 DUP DUP 493 1024 512 64 1 | | | BASE C> + 2 SYSCALL // sys_open
     DUP +? IF
-        .
+        HERE
+
+        // top of stack in this loop is the remaining amount of bytes to write,
+        // and just below it is the file descriptor to write to
+        BEGIN
+        
+        DUP 0<> WHILE // if no more bytes to write, finish
+            OVER OVER SWAP >C >C
+
+            0 DUP DUP // unused syscall args
+
+            C> // bytes to write
+            DUP HERE - BASE + // start point; `BASE + (HERE - bytes to write)`
+            C> // fd
+            1 SYSCALL // sys_write
+
+            DUP -? IF
+                // early return with the value from sys_write
+                >C POP POP C> EXIT
+            ELSE
+                SWAP -
+            THEN
+        REPEAT
+        POP
+        POP
+        0 // return value 0 for success
     THEN // open failure
 ;
 
-// REPL wrapper for IDUMP
-: SNAPSHOT WORD IDUMP ;
+// REPL wrapper for IDUMP, gets the filepath from the token stream,
+// and also sets TIB_LEN and TIB_IDX to 0 while saving their values \
+// to make sure that unparsed words do not get invoked when the \
+// image snapshot is loaded.
+BYTE_T VARIABLE SNAPSHOT_TIDX
+BYTE_T VARIABLE SNAPSHOT_TLEN
+: SNAPSHOT
+    WORD
+
+    // store TIB_IDX and TIB_LEN for later restoration
+    TIB_IDX SNAPSHOT_TIDX !b
+    TIB_LEN SNAPSHOT_TLEN !b
+
+    // zero TIB_IDX and TIB_LEN so that the file written by IDUMP will not \
+    // remember the REPL state of the image that wrote it, as that would \
+    // cause the outer interpreter to immediately start interpreting whatever \
+    // unparsed tokens were left in the TIB
+    0 aTIB_IDX !b
+    0 aTIB_LEN !b
+
+    // call IDUMP and print its return value so the user knows if it succeeded or not
+    IDUMP .
+
+    // restore interpreter state
+    SNAPSHOT_TIDX @b aTIB_IDX !b
+    SNAPSHOT_TLEN @b aTIB_LEN !b
+;
