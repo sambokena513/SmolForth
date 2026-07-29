@@ -83,7 +83,12 @@ sub %1, r15
 %define O_RDWR 2
 %define AT_FDCWD -100
 
-db "FIF" ; magic
+; header: 20 bytes
+db "FIF", 0 ; magic
+dd latest_def
+dd dstck_start
+dd rstck_start
+dd HERE_START
 
 ; entry point, image executes one word and then exits, for multiple words the user can type INTERPRET
 call INTERPRET
@@ -805,24 +810,54 @@ db 0
 db "BASE", 0
 
 
-RSPTR:
+; The following words manipulate the data and return stack pointers,
+; don't call these unless you know what you're doing, they're mainly intended for \
+; implementing coroutines, as for those there needs to be a way to save and restore \
+; the data and return stack pointers of each task.
+
+; rSP@ pushes the current return stack pointer to the data stack
+RSP_:
 dPUSH rsp
 ret
-RSPTR_entry:
+RSP__entry:
 dd BASE_entry
-dd RSPTR
+dd RSP_
 db 0
-db "RSPTR", 0
+db "rSP@", 0
 
 
-DSPTR:
+; dSP@ pushes the current data stack pointer to the data stack,
+; (which paradoxically means its result is already outdated)
+DSP_:
 dPUSH r14
 ret
-DSPTR_entry:
-dd RSPTR_entry
-dd DSPTR
+DSP__entry:
+dd RSP__entry
+dd DSP_
 db 0
-db "DSPTR", 0
+db "dSP@", 0
+
+
+; rSP! pops a value from the data stack, and makes that the return stack pointer
+_RSP:
+dPOP rsp
+ret
+_RSP_entry:
+dd DSP__entry
+dd _RSP
+db 0
+db "rSP!", 0
+
+
+; dSP! pops a value from the data stack, and makes that the data stack pointer
+_DSP:
+dPOP r14
+ret
+_DSP_entry:
+dd _RSP_entry
+dd _DSP
+db 0
+db "dSP!", 0
 
 
 ; ECR32 emits a `call rel32` instruction at HERE, and moves HERE past it.
@@ -844,7 +879,7 @@ mov [r15 + rbx + 1], eax ; store the rel32 offset
 add dword [rel here], 5
 ret
 ECR32_entry:
-dd DSPTR_entry
+dd _DSP_entry
 dd ECR32
 db 0
 db "ECR32", 0
@@ -1040,6 +1075,9 @@ compile_start dd 0 ; will be used later for colon definitions to patch code poin
 tib_idx db 0 ; current point in tib we're at, if add tib to this and resPTR it you get a valid string pointer
 tib_len db 0 ; current amount of bytes in tib
 tib times TIB_MAX_SIZE db 0 ; no delimiter on this string, be very careful about bounds checks!
+
+dstck_start times 2048 dq 0 ; start point for data stack, reserve 16KB
+rstck_start: ; start point for return stack, grows downward into the same 16KB
 
 ; HERE_START is at the end of the bootstrap image \
 ; so that new words start compiling past the \

@@ -266,7 +266,13 @@ CREATE :
 // a size of 8 bytes.
 // Note that VARIABLE shouldn't be called inside colon definitions, this is because \
 // it is a defining word and would corrupt COMP_START as well as LATEST for the word that called it.
-: VARIABLE CREATE HERE LATEST 4 + !d HERE 14 + COMPILE LITERAL -61 ,b ALLOT ; 
+: VARIABLE CREATE HERE LATEST 4 + !d HERE 14 + COMPILE LITERAL -61 ,b ALLOT ;
+
+// Patch LATEST's code pointer, taking an address from the stack.
+: >CODE LATEST 4 + !d ;
+
+// Text wrapper for >CODE, gets the code pointer from the next token.
+: ALIAS WORD FIND 4 + @d >CODE ;
 
 // CSTCK is the control flow stack, and CSPTR points to the next free slot in it.
 WORD_T VARIABLE CSPTR
@@ -296,7 +302,7 @@ CSTCK CSPTR !w
 // WHILE is semantically just IF so we don't compile a separate code body for it,
 // but it's useful to have a separate dictionary entry so that code is more readable.
 // After all, BEGIN IF REPEAT is a bit weird and makes it unclear whether there should be a THEN.
-CREATE WHILE IMMEDIATE WORD IF FIND 4 + @d LATEST 4 + !d
+CREATE WHILE ALIAS IF IMMEDIATE
 
 // INT64_MIN doubles as a mask for the sign bit
 : INT64_MIN -9223372036854775808 ;
@@ -362,3 +368,15 @@ CREATE WHILE IMMEDIATE WORD IF FIND 4 + @d LATEST 4 + !d
 ;
 // Version of EXEC that gets its input in a more REPL-friendly way.
 : LOAD WORD EXEC ;
+
+// Takes a filepath as an argument and writes everything from the image start to HERE \
+// to it, creating the file if it does not exist.
+: IDUMP 
+    >C 0 DUP DUP 420 65 BASE C> + 2 SYSCALL // sys_open
+    DUP +? IF
+        .
+    THEN // open failure
+;
+
+// REPL wrapper for IDUMP
+: SNAPSHOT WORD IDUMP ;

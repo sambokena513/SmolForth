@@ -70,8 +70,8 @@ global _start
 %define AT_FDCWD -100
 
 _start:
-  ; this file should map a 32KiB stack into memory, map a 2GiB image into memory,
-  ; put the image base address in r15, set up the TOS pointer in r14,
+  ; this file should map a 2GiB image into memory,
+  ; put the image base address in r15, set up the data stack pointer in r14,
   ; and then call the image's entry point
 
   mov rax, [rsp] ; argc
@@ -84,19 +84,6 @@ _start:
   lea rax, [rel filename_fallback]
   mov [rel filepath_ptr], rax
   .begin:
-
-  SYS_MMAP 32 * KB, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0
-
-  test rax, rax
-  jns .success_stack_mmap
-
-  SYS_WRITE errmmapmsg, errmmapmsg_size
-
-  jmp .exit
-
-  .success_stack_mmap:
-  mov r14, rax ; put the TOS pointer into the reserved register
-  mov [rel stck_ptr], rax ; so we can unmap it later
 
   SYS_OPENAT AT_FDCWD, [rel filepath_ptr], O_RDWR, 0
 
@@ -127,8 +114,14 @@ _start:
 
   .success_img_mmap:
   mov r15, rax
-  add rax, 3 ; skip magic
 
+  mov r14d, [r15 + 8] ; dstck_start
+  add r14, r15
+
+  mov esp, [r15 + 12] ; rstck_start
+  add rsp, r15
+
+  add rax, 20 ; skip header
   call rax ; run Forth
 
   SYS_MUNMAP r15, 2 * GB
