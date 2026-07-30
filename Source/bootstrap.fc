@@ -56,9 +56,9 @@ $CREATE<$,b<91>>
 $HERE $aCOMP_START !d
 
 // set mode to interpreting
-$LITERAL<$,q<0>>
+0 LITERAL
 $COMPILE<aINTERPS>
-$LITERAL<$,q<8>>
+8 LITERAL
 $COMPILE<+>
 $COMPILE<!b>
 $,b<-61>
@@ -72,9 +72,9 @@ $CREATE<$,b<93>>
 $HERE $aCOMP_START !d
 
 // set mode to compiling
-$LITERAL<$,q<1>>
+1 LITERAL
 $COMPILE<aINTERPS>
-$LITERAL<$,q<8>>
+8 LITERAL
 $COMPILE<+>
 $COMPILE<!b>
 $,b<-61>
