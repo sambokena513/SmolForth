@@ -410,8 +410,8 @@ CREATE WHILE ALIAS IF IMMEDIATE
             THEN
         REPEAT
         POP
-        POP
-        0 // return value 0 for success
+        PEEK >C
+        0 DUP DUP DUP DUP C> 3 SYSCALL // sys_close
     THEN // open failure
 ;
 

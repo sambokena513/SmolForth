@@ -310,6 +310,10 @@ db 0
 db "REFILL", 0
 
 
+; WORD is far too complicated, and seems to have weird interactions with other words,
+; so while I don't know the exact cause of the various bugs in it, what I do know is that \
+; it'll be easier to make it correct if I split off part of its logic into an IN> word.
+
 ; WORD parses the next word in the TIB,
 ; and returns its image-relative address
 WORD_:
