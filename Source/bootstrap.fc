@@ -392,7 +392,7 @@ CREATE WHILE ALIAS IF IMMEDIATE
         // and just below it is the file descriptor to write to
         BEGIN
         
-        DUP 0<> WHILE // if no more bytes to write, finish
+        DUP WHILE // if no more bytes to write, finish
             OVER OVER SWAP >C >C
 
             0 DUP DUP // unused syscall args

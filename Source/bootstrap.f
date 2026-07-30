@@ -2485,14 +2485,6 @@ ELSE
 THEN
 ;
 :
-0<>
-IF
--1
-ELSE
-0
-THEN
-;
-:
 -?
 INT64_MIN
 &
@@ -2692,7 +2684,6 @@ IF
 HERE
 BEGIN
 DUP
-0<>
 WHILE
 OVER
 OVER
