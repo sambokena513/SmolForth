@@ -30,7 +30,7 @@ $define CREATE
 $HERE // push HERE so we can later patch latest_def
 
 $,d<$LATEST> // set link to latest_def
-$,d<9> // set code pointer to GREET for placeholder behaviour
+$,d<26> // set code pointer to GREET for placeholder behaviour
 $,b<0> // give the word default behaviour
 $0 $,b<0> // name the word
 
@@ -43,7 +43,7 @@ $enddef
 // [
 $CREATE<$,b<91>>
 
-1 WORD [ FIND 8 + !b // make [ an immediate word
+1 $LATEST 8 + !b // make [ an immediate word
 
 $HERE $aCOMP_START !d
 
@@ -55,7 +55,7 @@ $COMPILE<+>
 $COMPILE<!b>
 $,b<-61>
 
-$COMP_START WORD [ FIND 4 + !d
+$COMP_START $LATEST 4 + !d
 
 
 // ]
@@ -71,7 +71,7 @@ $COMPILE<+>
 $COMPILE<!b>
 $,b<-61>
 
-$COMP_START WORD ] FIND 4 + !d
+$COMP_START $LATEST 4 + !d
 
 
 // aHERE
@@ -81,7 +81,7 @@ $HERE $aCOMP_START !d
 
 ] $aHERE [ $,b<-61>
 
-$COMP_START WORD aHERE FIND 4 + !d
+$COMP_START $LATEST 4 + !d
 
 
 // HERE
@@ -91,7 +91,7 @@ $HERE $aCOMP_START !d
 
 ] aHERE @d [ $,b<-61>
 
-$COMP_START WORD HERE FIND 4 + !d
+$COMP_START $LATEST 4 + !d
 
 
 // ALLOT
@@ -101,7 +101,7 @@ $HERE $aCOMP_START !d
 
 ] HERE + aHERE !d [ $,b<-61>
 
-$COMP_START WORD ALLOT FIND 4 + !d
+$COMP_START $LATEST 4 + !d
 
 
 // ,b
@@ -111,7 +111,7 @@ $HERE $aCOMP_START !d
 
 ] HERE !b 1 ALLOT [ $,b<-61>
 
-$COMP_START WORD ,b FIND 4 + !d
+$COMP_START $LATEST 4 + !d
 
 
 // ,w
@@ -121,7 +121,7 @@ $HERE $aCOMP_START !d
 
 ] HERE !w 2 ALLOT [ -61 ,b
 
-$COMP_START WORD ,w FIND 4 + !d
+$COMP_START $LATEST 4 + !d
 
 
 // ,d
@@ -131,7 +131,7 @@ $HERE $aCOMP_START !d
 
 ] HERE !d 4 ALLOT [ -61 ,b
 
-$COMP_START WORD ,d FIND 4 + !d
+$COMP_START $LATEST 4 + !d
 
 
 // ,q
@@ -141,7 +141,7 @@ $HERE $aCOMP_START !d
 
 ] HERE !q 8 ALLOT [ -61 ,b
 
-$COMP_START WORD ,q FIND 4 + !d
+$COMP_START $LATEST 4 + !d
 
 
 // CREATE
@@ -154,7 +154,7 @@ $HERE $aCOMP_START !d
 HERE // push here so we can patch latest_def later
 
 aINTERPS @d ,d // link
-9 ,d // code
+26 ,d // code
 0 ,b // flags
 
 // name
@@ -178,7 +178,7 @@ aINTERPS !d // patch latest_def
 
 -61 ,b // ret
 
-$COMP_START WORD CREATE FIND 4 + !d
+$COMP_START $LATEST 4 + !d
 
 
 CREATE aCOMP_START 
@@ -250,7 +250,7 @@ CREATE :
 : PEEK DUP . ;
 
 // 0BRANCH is to 0BR what LITERAL is to LIT.
-: 0BRANCH [ WORD 0BR FIND ] LITERAL ECR32 ,d ; IMMEDIATE
+: 0BRANCH [ CLEAR WORD 0BR FIND ] LITERAL ECR32 ,d ; IMMEDIATE
 // unconditional branch
 : BRANCH 0 COMPILE LITERAL COMPILE 0BRANCH ; IMMEDIATE
 
