@@ -25,14 +25,6 @@ $define ,d  $0 $HERE !d $ALLOT<4> $enddef
 $define ,q  $0 $HERE !q $ALLOT<8> $enddef
 $define COMPILE  WORD $0 FIND ECR32 $enddef
 
-$define LITERAL 
-
-$,b<72> $,b<-72> $0
-$,b<73> $,b<-119> $,b<6>
-$,b<73> $,b<-125> $,b<-58> $,b<8>
-
-$enddef
-
 $define CREATE
 
 $HERE // push HERE so we can later patch latest_def
