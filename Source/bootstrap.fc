@@ -358,6 +358,7 @@ CREATE WHILE ALIAS IF IMMEDIATE
         DUP >C >C
         0 DUP DUP DUP 0 C> 33 SYSCALL // sys_dup2
         DUP +? IF 
+            POP
             0 DUP DUP DUP DUP C> 3 SYSCALL POP // sys_close
             // we don't check the return value of sys_close because \
             // stdin has already been redirected and the script we're loading \
@@ -402,8 +403,7 @@ CREATE WHILE ALIAS IF IMMEDIATE
             THEN
         REPEAT
         POP
-        PEEK >C
-        0 DUP DUP DUP DUP C> 3 SYSCALL // sys_close
+        >C 0 DUP DUP DUP DUP C> 3 SYSCALL // sys_close
     THEN // open failure
 ;
 
