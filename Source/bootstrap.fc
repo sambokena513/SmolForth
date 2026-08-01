@@ -165,8 +165,8 @@ DUP @b ,b
 1 +
 
 DUP @b
-0BR [ 26 ,d ] // end loop
-0 0BR [ HERE 4 + SWAP - ,d ] // jump to start of loop
+[ 5 ] 0BRANCH // end loop
+[ HERE 5 + SWAP - ] BRANCH // jump to start of loop
 
 0 ,b // delimit string
 
@@ -200,7 +200,7 @@ HERE aINTERPS 10 + !d
 aINTERPS 10 + @d aINTERPS @d 4 + !d
 
 
-HERE aINTERPS 10 + !d
+HERE aCOMP_START !d
     ]
         aCOMP_START @d
     [
@@ -208,7 +208,7 @@ HERE aINTERPS 10 + !d
 aCOMP_START @d aINTERPS @d 4 + !d
 
 
-HERE aINTERPS 10 + !d
+HERE aCOMP_START !d
     ]
         aINTERPS @d
     [
@@ -216,7 +216,7 @@ HERE aINTERPS 10 + !d
 COMP_START aINTERPS @d 4 + !d
 
 
-HERE aINTERPS 10 + !d
+HERE aCOMP_START !d
     ]
         LATEST 8 + @b 1 | LATEST 8 + !b
     [
@@ -225,7 +225,7 @@ COMP_START LATEST 4 + !d
 
 
 // COMPILE is an immediate word that forces a word to be compiled even if it is immediate
-HERE aINTERPS 10 + !d
+HERE aCOMP_START !d
     ]
         WORD FIND ECR32
     [
@@ -236,12 +236,22 @@ COMP_START LATEST 4 + !d IMMEDIATE
 // WNB pushes the address of the word name buffer,
 // which is used by colon definitions to store the name \
 // of the word currently being defined
-HERE aINTERPS 10 + !d
+HERE aCOMP_START !d
     ]
         [ HERE 18 + ] LITERAL [ -61 ,b ] [ 255 ALLOT ]
     [
 CREATE WNB
-COMP_START LATEST 4 + !d IMMEDIATE
+COMP_START LATEST 4 + !d
+
+
+// WNB_WRITE takes a string pointer as an argument,
+// and copies the string to the word name buffer
+HERE aCOMP_START !d
+    ]
+        . // placeholder code
+    [
+-61 ,b CREATE WNB_WRITE
+COMP_START LATEST 4 + !d
 
 
 // colon starts a definition by setting COMP_START and entering compile mode
@@ -267,11 +277,6 @@ COMP_START LATEST 4 + !d
 
 // Useful for debugging without accidentally corrupting the stack.
 : PEEK DUP . ;
-
-// 0BRANCH is to 0BR what LITERAL is to LIT.
-: 0BRANCH [ CLEAR WORD 0BR FIND ] LITERAL ECR32 ,d ; IMMEDIATE
-// unconditional branch
-: BRANCH 0 COMPILE LITERAL COMPILE 0BRANCH ; IMMEDIATE
 
 // Since this Forth is untyped, the only thing we \
 // really care about is the *size* of a variable,
@@ -318,8 +323,8 @@ CSTCK CSPTR !w
 
 // loops
 : BEGIN HERE >C ; IMMEDIATE
-: UNTIL C> HERE 9 + SWAP - COMPILE 0BRANCH ; IMMEDIATE
-: AGAIN C> HERE 26 + SWAP - COMPILE BRANCH ; IMMEDIATE
+: UNTIL C> HERE 14 + SWAP - COMPILE 0BRANCH ; IMMEDIATE
+: AGAIN C> HERE 5 + SWAP - COMPILE BRANCH ; IMMEDIATE
 : REPEAT C> C> SWAP >C >C COMPILE AGAIN COMPILE ELSE C> POP ; IMMEDIATE
 // WHILE is semantically just IF so we don't compile a separate code body for it,
 // but it's useful to have a separate dictionary entry so that code is more readable.

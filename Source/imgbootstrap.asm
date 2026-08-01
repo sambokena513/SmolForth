@@ -712,33 +712,12 @@ db 0
 db "aINTERPS", 0
 
 
-; TODO, 0BR, and make 0BRANCH compile `jz rel32`,
-; 20% branch misprediction is unacceptable
-_0BR:
-dPOP rax
-test rax, rax
-jnz .not_zero
-mov rax, [rsp]
-mov eax, [rax] ; load rel32
-add [rsp], eax
-add [rsp], 4 ; so it's relative to where the offset is and not to the instruction itself
-ret
-.not_zero:
-add [rsp], 4 ; skip rel32
-ret
-_0BR_entry:
-dd aINTERPS_entry
-dd _0BR
-db NO_INTERPRET
-db "0BR", 0
-
-
 DUP:
 mov rax, [r14 - 8]
 dPUSH rax
 ret
 DUP_entry:
-dd _0BR_entry
+dd aINTERPS_entry
 dd DUP
 db 0
 db "DUP", 0
@@ -876,7 +855,6 @@ db "ECR32", 0
 ; and compiles it.
 LITERAL:
 dPOP rbx
-
 mov eax, [rel here]
 
 ; mov rax, imm64
@@ -903,6 +881,50 @@ dd LITERAL
 db IMMEDIATE
 db "LITERAL", 0
 
+_0BRANCH:
+dPOP rbx
+mov eax, [rel here]
+
+; sub r14, 8
+mov byte [r15 + rax], 0x49
+mov byte [r15 + rax + 1], 0x83
+mov byte [r15 + rax + 2], 0xee
+mov byte [r15 + rax + 3], 0x08
+
+; cmp [r14], 0
+mov byte [r15 + rax + 4], 0x49
+mov byte [r15 + rax + 5], 0x83
+mov byte [r15 + rax + 6], 0x3e
+mov byte [r15 + rax + 7], 0x00
+
+; je rel32
+mov byte [r15 + rax + 8], 0x0f
+mov byte [r15 + rax + 9], 0x84
+mov dword [r15 + rax + 10], ebx
+
+add dword [rel here], 14
+ret
+_0BRANCH_entry:
+dd LITERAL_entry
+dd _0BRANCH
+db IMMEDIATE
+db "0BRANCH", 0
+
+BRANCH:
+dPOP rbx
+mov eax, [rel here]
+
+; jmp rel32
+mov byte [r15 + rax], 0xe9
+mov dword [r15 + rax + 1], ebx
+
+add dword [rel here], 5
+ret
+BRANCH_entry:
+dd _0BRANCH_entry
+dd BRANCH
+db IMMEDIATE
+db "BRANCH", 0
 
 ; ABORT prints an error message and empties the TIB,
 ; it takes the image-relative address of the string to print.
@@ -927,7 +949,7 @@ mov byte [rel tib_len], 0
 mov byte [rel tib_idx], 0
 ret
 ABORT_entry:
-dd LITERAL_entry
+dd BRANCH_entry
 dd ABORT
 db 0
 db "ABORT", 0
@@ -939,11 +961,12 @@ db "ABORT", 0
 %define I_O_TIBIDX 14
 %define I_O_TIBLEN 15
 
-; push a constant
+; push a constant, don't change this, user code depends on it being 17 bytes
 %macro I_CONST 1
-mov rax, %1
-mov [r14], rax
-add r14, 8
+db 0x48, 0xb8
+dq %1
+db 0x49, 0x89, 0x06
+db 0x49, 0x83, 0xc6, 0x08
 %endmacro
 
 ; push the address of the interpreter state struct + offset
@@ -959,17 +982,18 @@ I_SOFFSET I_O_STATE
 call FETCHb
 %endmacro
 
-; branch to a label if zero, makes writing calls to 0BR \
-; closer to the syntax of `jz label`
+; branch to a label if zero, this is 
 %macro I_0BRANCH 1
-call _0BR
+db 0x49, 0x83, 0xee, 0x08
+db 0x49, 0x83, 0x3e, 0x00
+db 0x0f, 0x84
 dd %1 - ($ + 4)
 %endmacro
 
 ; unconditional branch
 %macro I_BRANCH 1
-I_CONST 0
-I_0BRANCH %1
+db 0xe9
+dd %1 - ($ + 4)
 %endmacro
 
 ; jump back to the start of INTERPRET
@@ -1019,7 +1043,7 @@ I_0BRANCH .attempt_interp_word
 call DUP ; - FIND
 I_FLAG IMMEDIATE
 I_0BRANCH .attempt_comp_word
-I_BRANCH .attempt_interp_word ; interpret if IMMEDIATE
+I_BRANCH .interp_word ; interpret if IMMEDIATE
 
 .attempt_comp_word:
 call DUP ; - FIND
