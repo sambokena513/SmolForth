@@ -331,35 +331,8 @@ CSTCK CSPTR !w
 // After all, BEGIN IF REPEAT is a bit weird and makes it unclear whether there should be a THEN.
 CREATE WHILE ALIAS IF IMMEDIATE
 
-// INT64_MIN doubles as a mask for the sign bit
 : INT64_MIN -9223372036854775808 ;
 : INT64_MAX 9223372036854775807 ;
-
-// comparison operators
-: 0== IF 0 ELSE -1 THEN ;
-// no 0<> because it is semantically the same as just passing the argument directly to the branch
-: -? INT64_MIN & IF -1 ELSE 0 THEN ;
-: +? INT64_MIN & IF 0 ELSE -1 THEN ;
-: == - IF 0 ELSE -1 THEN ;
-: <> - IF -1 ELSE 0 THEN ;
-: <
-    OVER -? OVER -? == // check if signs are equal
-    IF
-        - -? // same sign means we can subtract safely and check if result is smaller than 0
-    ELSE
-        SWAP POP -? // we don't need b anymore so we remove it, and return sign of a
-    THEN
-;
-: <= OVER OVER == IF POP POP -1 ELSE < THEN ;
-: >
-    OVER -? OVER -? == // check if signs are equal
-    IF
-        - -1 + +? // same sign means we can subtract safely and check if result is greater than 0
-    ELSE
-        SWAP POP +? // we don't need b anymore so we remove it, and return the opposite of the sign of a
-    THEN
-;
-: >= OVER OVER == IF POP POP -1 ELSE > THEN ;
 
 // "emit jump rel32", this is used for tail calls,
 // note that since the compiler doesn't know when definitions end \
@@ -382,16 +355,9 @@ CREATE WHILE ALIAS IF IMMEDIATE
         DUP >C >C
         0 DUP DUP DUP 0 C> 33 SYSCALL // sys_dup2
         DUP +? IF
-            POP
-            0 DUP DUP DUP DUP C> 3 SYSCALL POP // sys_close
-            // we don't check the return value of sys_close because \
-            // stdin has already been redirected and the script we're loading \
-            // wouldn't necessarily be aware that it's being run through dup2 \
-            // rather than the terminal, and as such this would force us to introduce \
-            // either variable stack effects (very bad no good) or make every script \
-            // pop one value when it initializes "just in case".
-            // So leaving a duplicate fd open is really the lesser evil.
-        THEN // dup2 failure
+            POP // discard value if no error
+        THEN
+        0 DUP DUP DUP DUP C> 3 SYSCALL POP // sys_close
     THEN // open failure
 ;
 // Version of EXEC that gets its input in a more REPL-friendly way.

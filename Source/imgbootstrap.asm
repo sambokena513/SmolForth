@@ -594,10 +594,11 @@ db ".", 0
 ; (note that the calling convention is `arg2 arg1 op` meaning that to perform 2 - 3 you would write `3 2 -`)
 
 PLUS:
-dPOP rax
-dPOP rbx
+mov rax, [r14 - 8]
+mov rbx, [r14 - 16]
 add rax, rbx
-dPUSH rax
+sub r14, 8
+mov [r14 - 8], rax
 ret
 PLUS_entry:
 dd DOT_entry
@@ -607,10 +608,11 @@ db "+", 0
 
 
 MINUS:
-dPOP rax
-dPOP rbx
+mov rax, [r14 - 8]
+mov rbx, [r14 - 16]
 sub rax, rbx
-dPUSH rax
+sub r14, 8
+mov [r14 - 8], rax
 ret
 MINUS_entry:
 dd PLUS_entry
@@ -620,10 +622,11 @@ db "-", 0
 
 
 MUL_:
-dPOP rax
-dPOP rbx
+mov rax, [r14 - 8]
+mov rbx, [r14 - 16]
 imul rax, rbx
-dPUSH rax
+sub r14, 8
+mov [r14 - 8], rax
 ret
 MUL__entry:
 dd MINUS_entry
@@ -634,11 +637,12 @@ db "*", 0
 
 ; note that this performs integer division, our Forth doesn't natively support floats
 DIV_:
-dPOP rax
-dPOP rbx
+mov rax, [r14 - 8]
+mov rbx, [r14 - 16]
 cqo
 idiv rbx
-dPUSH rax
+sub r14, 8
+mov [r14 - 8], rax
 ret
 DIV__entry:
 dd MUL__entry
@@ -648,9 +652,9 @@ db "/", 0
 
 
 NOT_:
-dPOP rax
+mov rax, [r14 - 8]
 not rax
-dPUSH rax
+mov [r14 - 8], rax
 ret
 NOT__entry:
 dd DIV__entry
@@ -660,10 +664,11 @@ db "~", 0
 
 
 AND_:
-dPOP rax
-dPOP rbx
+mov rax, [r14 - 8]
+mov rbx, [r14 - 16]
 and rax, rbx
-dPUSH rax
+sub r14, 8
+mov [r14 - 8], rax
 ret
 AND__entry:
 dd NOT__entry
@@ -673,10 +678,11 @@ db "&", 0
 
 
 OR_:
-dPOP rax
-dPOP rbx
+mov rax, [r14 - 8]
+mov rbx, [r14 - 16]
 or rax, rbx
-dPUSH rax
+sub r14, 8
+mov [r14 - 8], rax
 ret
 OR__entry:
 dd AND__entry
@@ -686,16 +692,175 @@ db "|", 0
 
 
 XOR_:
-dPOP rax
-dPOP rbx
+mov rax, [r14 - 8]
+mov rbx, [r14 - 16]
 xor rax, rbx
-dPUSH rax
+sub r14, 8
+mov [r14 - 8], rax
 ret
 XOR__entry:
 dd OR__entry
 dd XOR_
 db 0
 db "^", 0
+
+
+SHL_:
+mov rax, [r14 - 8]
+mov rcx, [r14 - 16]
+shl rax, cl
+sub r14, 8
+mov [r14 - 8], rax
+ret
+SHL__entry:
+dd XOR__entry
+dd SHL_
+db 0
+db "<<", 0
+
+
+SHR_:
+mov rax, [r14 - 8]
+mov rcx, [r14 - 16]
+shr rax, cl
+sub r14, 8
+mov [r14 - 8], rax
+ret
+SHR__entry:
+dd SHL__entry
+dd SHR_
+db 0
+db ">>", 0
+
+
+SMALLER:
+mov rax, [r14 - 8]
+mov rbx, [r14 - 16]
+xor rcx, rcx
+cmp rax, rbx
+setl cl
+neg rcx
+sub r14, 8
+mov [r14 - 8], rcx
+ret
+SMALLER_entry:
+dd SHR__entry
+dd SMALLER
+db 0
+db "<", 0
+
+
+GREATER:
+mov rax, [r14 - 8]
+mov rbx, [r14 - 16]
+xor rcx, rcx
+cmp rax, rbx
+setg cl
+neg rcx
+sub r14, 8
+mov [r14 - 8], rcx
+ret
+GREATER_entry:
+dd SMALLER_entry
+dd GREATER
+db 0
+db ">", 0
+
+
+EQUAL:
+mov rax, [r14 - 8]
+mov rbx, [r14 - 16]
+xor rcx, rcx
+cmp rax, rbx
+sete cl
+neg rcx
+sub r14, 8
+mov [r14 - 8], rcx
+ret
+EQUAL_entry:
+dd GREATER_entry
+dd EQUAL
+db 0
+db "==", 0
+
+
+INEQUAL:
+mov rax, [r14 - 8]
+mov rbx, [r14 - 16]
+xor rcx, rcx
+cmp rax, rbx
+setne cl
+neg rcx
+sub r14, 8
+mov [r14 - 8], rcx
+ret
+INEQUAL_entry:
+dd EQUAL_entry
+dd INEQUAL
+db 0
+db "<>", 0
+
+
+GREATEREQUAL:
+mov rax, [r14 - 8]
+mov rbx, [r14 - 16]
+xor rcx, rcx
+cmp rax, rbx
+setge cl
+neg rcx
+sub r14, 8
+mov [r14 - 8], rcx
+ret
+GREATEREQUAL_entry:
+dd INEQUAL_entry
+dd GREATEREQUAL
+db 0
+db ">=", 0
+
+
+LOWEREQUAL:
+mov rax, [r14 - 8]
+mov rbx, [r14 - 16]
+xor rcx, rcx
+cmp rax, rbx
+setle cl
+neg rcx
+sub r14, 8
+mov [r14 - 8], rcx
+ret
+LOWEREQUAL_entry:
+dd GREATEREQUAL_entry
+dd LOWEREQUAL
+db 0
+db "<=", 0
+
+
+SIGN:
+xor rcx, rcx
+cmp [r14 - 8], 0
+sets cl
+neg rcx
+mov [r14 - 8], rcx
+ret
+SIGN_entry:
+dd LOWEREQUAL_entry
+dd SIGN
+db 0
+db "-?", 0
+
+
+NOTSIGN:
+xor rcx, rcx
+cmp [r14 - 8], 0
+setns cl
+neg rcx
+mov [r14 - 8], rcx
+ret
+NOTSIGN_entry:
+dd SIGN_entry
+dd NOTSIGN
+db 0
+db "+?", 0
 
 
 ; aINTERPS pushes the image-relative address of the start of the outer interpreter var struct,
@@ -706,7 +871,7 @@ unresPTR rax
 dPUSH rax
 ret
 aINTERPS_entry:
-dd XOR__entry
+dd NOTSIGN_entry
 dd aINTERPS
 db 0
 db "aINTERPS", 0
