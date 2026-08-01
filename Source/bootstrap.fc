@@ -23,7 +23,9 @@ $define ,b  $0 $HERE !b $ALLOT<1> $enddef
 $define ,w  $0 $HERE !w $ALLOT<2> $enddef
 $define ,d  $0 $HERE !d $ALLOT<4> $enddef
 $define ,q  $0 $HERE !q $ALLOT<8> $enddef
-$define COMPILE  WORD $0 FIND ECR32 $enddef
+$define COMPILE  CLEAR WORD $0 FIND ECR32 $enddef
+$define DEFINITION_START $HERE $aCOMP_START !d $enddef
+$define DEFINITION_END $COMP_START $LATEST 4 + !d $enddef
 
 $define CREATE
 
@@ -41,11 +43,7 @@ $enddef
 // bootstrap code
 
 // [
-$CREATE<$,b<91>>
-
-1 $LATEST 8 + !b // make [ an immediate word
-
-$HERE $aCOMP_START !d
+$DEFINITION_START
 
 // set mode to interpreting
 0 LITERAL
@@ -55,13 +53,15 @@ $COMPILE<+>
 $COMPILE<!b>
 $,b<-61>
 
-$COMP_START $LATEST 4 + !d
+$CREATE<$,b<91>>
+
+1 $LATEST 8 + !b // make [ an immediate word
+
+$DEFINITION_END
 
 
 // ]
-$CREATE<$,b<93>>
-
-$HERE $aCOMP_START !d
+$DEFINITION_START
 
 // set mode to compiling
 1 LITERAL
@@ -71,83 +71,83 @@ $COMPILE<+>
 $COMPILE<!b>
 $,b<-61>
 
-$COMP_START $LATEST 4 + !d
+$CREATE<$,b<93>>
+
+$DEFINITION_END
 
 
 // aHERE
-$CREATE<$,b<97> $,b<72> $,b<69> $,b<82> $,b<69>>
-
-$HERE $aCOMP_START !d
+$DEFINITION_START
 
 ] $aHERE [ $,b<-61>
 
-$COMP_START $LATEST 4 + !d
+$CREATE<$,b<97> $,b<72> $,b<69> $,b<82> $,b<69>>
+
+$DEFINITION_END
 
 
 // HERE
-$CREATE<$,b<72> $,b<69> $,b<82> $,b<69>>
-
-$HERE $aCOMP_START !d
+$DEFINITION_START
 
 ] aHERE @d [ $,b<-61>
 
-$COMP_START $LATEST 4 + !d
+$CREATE<$,b<72> $,b<69> $,b<82> $,b<69>>
+
+$DEFINITION_END
 
 
 // ALLOT
-$CREATE<$,b<65> $,b<76> $,b<76> $,b<79> $,b<84>>
-
-$HERE $aCOMP_START !d
+$DEFINITION_START
 
 ] HERE + aHERE !d [ $,b<-61>
 
-$COMP_START $LATEST 4 + !d
+$CREATE<$,b<65> $,b<76> $,b<76> $,b<79> $,b<84>>
+
+$DEFINITION_END
 
 
 // ,b
-$CREATE<$,b<44> $,b<98>>
-
-$HERE $aCOMP_START !d
+$DEFINITION_START
 
 ] HERE !b 1 ALLOT [ $,b<-61>
 
-$COMP_START $LATEST 4 + !d
+$CREATE<$,b<44> $,b<98>>
+
+$DEFINITION_END
 
 
 // ,w
-$CREATE<44 ,b 119 ,b>
-
-$HERE $aCOMP_START !d
+$DEFINITION_START
 
 ] HERE !w 2 ALLOT [ -61 ,b
 
-$COMP_START $LATEST 4 + !d
+$CREATE<44 ,b 119 ,b>
+
+$DEFINITION_END
 
 
 // ,d
-$CREATE<44 ,b 100 ,b>
-
-$HERE $aCOMP_START !d
+$DEFINITION_START
 
 ] HERE !d 4 ALLOT [ -61 ,b
 
-$COMP_START $LATEST 4 + !d
+$CREATE<44 ,b 100 ,b>
+
+$DEFINITION_END
 
 
 // ,q
-$CREATE<44 ,b 113 ,b>
-
-$HERE $aCOMP_START !d
+$DEFINITION_START
 
 ] HERE !q 8 ALLOT [ -61 ,b
 
-$COMP_START $LATEST 4 + !d
+$CREATE<44 ,b 113 ,b>
+
+$DEFINITION_END
 
 
-// CREATE
-$CREATE<67 ,b 82 ,b 69 ,b 65 ,b 84 ,b 69 ,b>
-
-$HERE $aCOMP_START !d
+// MKENTR
+$DEFINITION_START
 
 ]
 
@@ -157,8 +157,7 @@ aINTERPS @d ,d // link
 26 ,d // code
 0 ,b // flags
 
-// name
-WORD
+SWAP // put string pointer on top of stack
 
 [ HERE ] // push address we'll jump to
 
@@ -171,71 +170,91 @@ DUP @b
 
 0 ,b // delimit string
 
-POP // remove WORD result
+POP // remove string pointer
 aINTERPS !d // patch latest_def
 
 [
 
 -61 ,b // ret
 
-$COMP_START $LATEST 4 + !d
+$CREATE<77 ,b 75 ,b 69 ,b 78 ,b 84 ,b 82 ,b>
+
+$DEFINITION_END
 
 
-CREATE aCOMP_START 
-    HERE aINTERPS 10 + !d 
-        ]
-            aINTERPS 10 +
-        [ 
-    -61 ,b aINTERPS 10 + @d 
-    aINTERPS @d 4 + !d
+// CREATE
+$DEFINITION_START
 
-CREATE COMP_START 
-    HERE aINTERPS 10 + !d 
-        ]
-            aCOMP_START @d
-        [ 
-    -61 ,b aINTERPS 10 + @d 
-    aINTERPS @d 4 + !d
+] WORD MKENTR [ -61 ,b
 
-CREATE LATEST 
-    HERE aINTERPS 10 + !d 
-        ]
-            aINTERPS @d
-        [ 
-    -61 ,b aINTERPS 10 + @d 
-    aINTERPS @d 4 + !d
+$CREATE<67 ,b 82 ,b 69 ,b 65 ,b 84 ,b 69 ,b>
 
-CREATE IMMEDIATE 
-    HERE aINTERPS 10 + !d 
-        ]
-            LATEST 8 + @b 1 | LATEST 8 + !b
-        [ 
-    -61 ,b aINTERPS 10 + @d 
-    LATEST 4 + !d
+$DEFINITION_END
+
+
+HERE aINTERPS 10 + !d
+    ]
+        aINTERPS 10 +
+    [
+-61 ,b CREATE aCOMP_START
+aINTERPS 10 + @d aINTERPS @d 4 + !d
+
+
+HERE aINTERPS 10 + !d
+    ]
+        aCOMP_START @d
+    [
+-61 ,b CREATE COMP_START
+aCOMP_START @d aINTERPS @d 4 + !d
+
+
+HERE aINTERPS 10 + !d
+    ]
+        aINTERPS @d
+    [
+-61 ,b CREATE LATEST
+COMP_START aINTERPS @d 4 + !d
+
+
+HERE aINTERPS 10 + !d
+    ]
+        LATEST 8 + @b 1 | LATEST 8 + !b
+    [
+-61 ,b CREATE IMMEDIATE
+COMP_START LATEST 4 + !d
+
 
 // COMPILE is an immediate word that forces a word to be compiled even if it is immediate
-CREATE COMPILE 
-    HERE aINTERPS 10 + !d 
-        ]
-            WORD FIND ECR32
-        [ 
-    -61 ,b aINTERPS 10 + @d 
-    LATEST 4 + !d IMMEDIATE
+HERE aINTERPS 10 + !d
+    ]
+        WORD FIND ECR32
+    [
+-61 ,b CREATE COMPILE
+COMP_START LATEST 4 + !d IMMEDIATE
 
-CREATE :
-    HERE aCOMP_START !d
-        ]
-            // colon makes a dictionary entry, sets COMP_START, and enters compile mode
-            // it also initially sets the new word's flag byte to HIDDEN so that definitions
-            // can reference older definitions of the same word
-            CREATE HERE aCOMP_START !d 2 LATEST 8 + !b ]
-        [
-    -61 ,b COMP_START
-    LATEST 4 + !d
+
+// WNB pushes the address of the word name buffer,
+// which is used by colon definitions to store the name \
+// of the word currently being defined
+HERE aINTERPS 10 + !d
+    ]
+        [ HERE 18 + ] LITERAL [ -61 ,b ] [ 255 ALLOT ]
+    [
+CREATE WNB
+COMP_START LATEST 4 + !d IMMEDIATE
+
+
+// colon starts a definition by setting COMP_START and entering compile mode
+HERE aCOMP_START !d
+    ]
+        CREATE HERE aCOMP_START !d ]
+    [
+-61 ,b CREATE :
+COMP_START LATEST 4 + !d
 
 // semicolon finishes a definition by compiling a `ret` and patching the code pointer as well as flag byte of the new word
 // semicolon needs to be immediate since otherwise it wouldn't exit compilation
-: ; COMPILE [ -61 ,b COMP_START LATEST 4 + !d 0 LATEST 8 + !b [ -61 ,b COMP_START LATEST 4 + !d 0 LATEST 8 + !b IMMEDIATE
+: ; COMPILE [ -61 ,b COMP_START LATEST 4 + !d [ -61 ,b COMP_START LATEST 4 + !d IMMEDIATE
 
 // With these words we round out the set of words for manipulating interpreter state.
 : aSCAN_START aINTERPS 9 + ;
@@ -318,7 +337,7 @@ CREATE WHILE ALIAS IF IMMEDIATE
 : +? INT64_MIN & IF 0 ELSE -1 THEN ;
 : == - IF 0 ELSE -1 THEN ;
 : <> - IF -1 ELSE 0 THEN ;
-: < 
+: <
     OVER -? OVER -? == // check if signs are equal
     IF
         - -? // same sign means we can subtract safely and check if result is smaller than 0
@@ -327,7 +346,7 @@ CREATE WHILE ALIAS IF IMMEDIATE
     THEN
 ;
 : <= OVER OVER == IF POP POP -1 ELSE < THEN ;
-: > 
+: >
     OVER -? OVER -? == // check if signs are equal
     IF
         - -1 + +? // same sign means we can subtract safely and check if result is greater than 0
@@ -357,7 +376,7 @@ CREATE WHILE ALIAS IF IMMEDIATE
     DUP +? IF
         DUP >C >C
         0 DUP DUP DUP 0 C> 33 SYSCALL // sys_dup2
-        DUP +? IF 
+        DUP +? IF
             POP
             0 DUP DUP DUP DUP C> 3 SYSCALL POP // sys_close
             // we don't check the return value of sys_close because \
@@ -375,7 +394,7 @@ CREATE WHILE ALIAS IF IMMEDIATE
 
 // Takes a filepath as an argument and writes everything from the image start to HERE \
 // to it, creating the file if it does not exist.
-: IDUMP 
+: IDUMP
     // we open the file with O_APPEND, O_TRUNC, O_CREAT, and O_WRONLY
     >C 0 DUP DUP 493 1024 512 64 1 | | | BASE C> + 2 SYSCALL // sys_open
     DUP +? IF
@@ -384,7 +403,7 @@ CREATE WHILE ALIAS IF IMMEDIATE
         // top of stack in this loop is the remaining amount of bytes to write,
         // and just below it is the file descriptor to write to
         BEGIN
-        
+
         DUP WHILE // if no more bytes to write, finish
             OVER OVER SWAP >C >C
 
