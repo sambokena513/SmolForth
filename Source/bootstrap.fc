@@ -248,7 +248,26 @@ COMP_START LATEST 4 + !d
 // and copies the string to the word name buffer
 HERE aCOMP_START !d
     ]
-        . // placeholder code
+        // this loop is effectively a BEGIN ... UNTIL loop so even if the string we pass it
+        // has a length of 0 then it will still copy one byte, this is fine though since
+        // we always start at idx 0 and the WNB is long enough, so no memory gets corrupted
+        0
+        [ HERE ] // start of loop
+
+        OVER OVER + // push strptr + index
+        OVER WNB + // push wnb + index
+        SWAP // strptr + index now on top
+
+        @b SWAP !b // get char and store it at WNB
+
+        1 + // increment index
+
+        OVER OVER + @b // we terminate the loop when char is NUL
+        [ 5 ] 0BRANCH // exit loop
+        [ HERE 5 + SWAP - ] BRANCH // repeat
+
+        SWAP POP // remove strptr
+        WNB + 0 SWAP !b // NUL-terminate string 
     [
 -61 ,b CREATE WNB_WRITE
 COMP_START LATEST 4 + !d
@@ -257,14 +276,14 @@ COMP_START LATEST 4 + !d
 // colon starts a definition by setting COMP_START and entering compile mode
 HERE aCOMP_START !d
     ]
-        CREATE HERE aCOMP_START !d ]
+        WORD WNB_WRITE HERE aCOMP_START !d ]
     [
 -61 ,b CREATE :
 COMP_START LATEST 4 + !d
 
 // semicolon finishes a definition by compiling a `ret` and patching the code pointer as well as flag byte of the new word
 // semicolon needs to be immediate since otherwise it wouldn't exit compilation
-: ; COMPILE [ -61 ,b COMP_START LATEST 4 + !d [ -61 ,b COMP_START LATEST 4 + !d IMMEDIATE
+: ; COMPILE [ -61 ,b WNB MKENTR COMP_START LATEST 4 + !d [ -61 ,b WNB MKENTR COMP_START LATEST 4 + !d IMMEDIATE
 
 // With these words we round out the set of words for manipulating interpreter state.
 : aSCAN_START aINTERPS 9 + ;
@@ -293,7 +312,7 @@ COMP_START LATEST 4 + !d
 // a size of 8 bytes.
 // Note that VARIABLE shouldn't be called inside colon definitions, this is because \
 // it is a defining word and would corrupt COMP_START as well as LATEST for the word that called it.
-: VARIABLE CREATE HERE LATEST 4 + !d HERE 18 + COMPILE LITERAL -61 ,b ALLOT ;
+: VARIABLE HERE aCOMP_START !d HERE 18 + COMPILE LITERAL -61 ,b ALLOT CREATE COMP_START LATEST 4 + !d ;
 
 // Patch LATEST's code pointer, taking an address from the stack.
 : >CODE LATEST 4 + !d ;
@@ -348,7 +367,7 @@ CREATE WHILE ALIAS IF IMMEDIATE
 
 // Take string pointer to filepath, attempt to open a file with it and redirect stdin to the file,
 // closing whatever fd stdin was previously.
-: EXEC
+: EXECF
     // duplicate return value so we can call both dup2 and close with the fd
     >C 0 DUP DUP DUP DUP BASE C> + 2 SYSCALL // sys_open
     DUP +? IF
@@ -360,8 +379,8 @@ CREATE WHILE ALIAS IF IMMEDIATE
         0 DUP DUP DUP DUP C> 3 SYSCALL POP // sys_close
     THEN // open failure
 ;
-// Version of EXEC that gets its input in a more REPL-friendly way.
-: LOAD WORD EXEC ;
+// Version of EXECF that gets its input in a more REPL-friendly way.
+: LOAD WORD EXECF ;
 
 // Takes a filepath as an argument and writes everything from the image start to HERE \
 // to it, creating the file if it does not exist.

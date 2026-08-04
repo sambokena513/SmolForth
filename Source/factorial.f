@@ -1,0 +1,7 @@
+: FACTORIAL
+    1 SWAP BEGIN
+    DUP 0 < WHILE
+        SWAP OVER * SWAP -1 +
+    REPEAT
+    POP
+;
