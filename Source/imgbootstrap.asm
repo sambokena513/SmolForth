@@ -290,6 +290,12 @@ lea rsi, [rel refill_errmsg]
 SYS_WRITE rsi, refill_errmsg_size
 ret
 .eof: ; if we hit EOF we assume we were reading a disk file and redirect stdin back to the terminal
+lea rax, [rel tib]
+movzx ecx, byte [rel tib_idx]
+add rax, rcx
+mov byte [rax], 10 ; insert a newline after the final token to finish the file
+add byte [rel tib_idx], 1
+add byte [rel tib_len], 1
 lea rsi, [rel refill_path]
 SYS_OPENAT AT_FDCWD, rsi, O_RDONLY, 0
 mov rbx, rax
@@ -1147,7 +1153,7 @@ I_SOFFSET I_O_STATE
 call FETCHb
 %endmacro
 
-; branch to a label if zero, this is 
+; branch to a label if zero
 %macro I_0BRANCH 1
 db 0x49, 0x83, 0xee, 0x08
 db 0x49, 0x83, 0x3e, 0x00
