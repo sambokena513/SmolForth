@@ -47,3 +47,31 @@ is so that they can be used in sys_write for example to implement things like pr
 )
 BYTE_T VARIABLE WHITESPACE 32 WHITESPACE !b
 BYTE_T VARIABLE NEWLINE 10 NEWLINE !b
+
+( Get one character from the terminal input buffer and advance the parsing cursor. )
+( This is very buggy for some reason, clearly it doesn't handle all input edge cases that WORD does. )
+: GETCHAR 
+    TIB_LEN 255 == IF
+        CLEAR
+        TSELF
+    THEN
+
+    TIB_IDX TIB_LEN == IF
+        REFILL
+        TSELF
+    THEN
+
+    TIB_IDX aTIB + @b
+    TIB_IDX 1 + aTIB_IDX !b
+;
+
+( Compiles a string constant into a definition,
+does not handle escape sequences. )
+CREATE "
+: r"
+    GETCHAR BEGIN
+    DUP 34 <> WHILE
+        ,b GETCHAR
+    REPEAT
+    0 ,b
+; IMMEDIATE
