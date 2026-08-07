@@ -1,4 +1,4 @@
-( Dependencies: bootstrap.f, stdstring.f )
+( Dependencies: bootstrap.f, stdstring.f, stddict.f )
 
 DWORD_T VARIABLE HEAP_BASE 512 1024 1024 * * HEAP_BASE !d
 DWORD_T VARIABLE HEAP_MAP_BASE 8 4096 HEAP_BASE @d 3 * / / HEAP_BASE @d - HEAP_MAP_BASE !d
