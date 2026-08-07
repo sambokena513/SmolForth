@@ -34,6 +34,12 @@ CREATE )
     UNTIL
 ; IMMEDIATE
 
+( Dependencies: bootstrap.f )
+
+( <stdstring.f> :; This file implements string handling functions as well as comments.
+This description of it is later in the file than for other parts of the stdlib because once again,
+this *is* the file that implements them, and we cannot use comments until they exist. )
+
 ( WHITESPACE and NEWLINE respectively are in-memory constants for the values of \
 ASCII space and ASCII newline characters, the reason for making them with VARIABLE \
 instead of just being immediate words that push 32 and 10 respectively to the stack \

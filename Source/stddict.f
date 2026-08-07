@@ -1,5 +1,8 @@
 ( Dependencies: bootstrap.f, stdstring.f )
 
+( <stddict.f> :; This file implements various dictionary introspection and modification
+words for easier metaprogramming. )
+
 ( WORDCOUNT returns the number of entries in the current dictionary. )
 : WORDCOUNT LATEST 0 BEGIN OVER WHILE 1 + SWAP @d SWAP REPEAT SWAP POP ;
 
