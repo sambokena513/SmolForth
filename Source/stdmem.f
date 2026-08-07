@@ -41,12 +41,61 @@ Returns the length of the run, which can be anywhere from 0 to n. )
     SWAP C> POP POP 
 ;
 
+: a_b->a_bit 8 * ;
+: a_bit->a_b 8 SWAP / ;
+
+( Set n bits to 1, takes a bit address and count. )
+: setnb
+    BEGIN
+    OVER WHILE
+        DUP 1 SWAP !bit
+        1 + SWAP 1 SWAP - SWAP
+    REPEAT
+    POP POP
+;
+
+( Clear n bits, takes a bit address and count. )
+: clnb
+    BEGIN
+    OVER WHILE
+        DUP 0 SWAP !bit
+        1 + SWAP 1 SWAP - SWAP
+    REPEAT
+    POP POP
+;
+
 ( Check if there is a run of *at least* n zero bits starting at addr, takes an address and desired run length.
 Returns true if there is such a run, and false if there is not. )
 : n0RUN? OVER SWAP 0RUN == ;
 
 ( Attempt to allocate n pages, returns the address of the first page if succesful, or -1 for failure. )
-: pALLOC ;
+: pALLOC
+    >C
+    [ HEAP_MAP_BASE @d a_b->a_bit ] LITERAL
+    BEGIN
+    DUP [ HEAP_BASE @d a_b->a_bit ] LITERAL > WHILE ( stop looping when we hit the end of the bitmap )
+        DUP C@ SWAP 0RUN DUP IF
+            DUP C@ == IF
+                C> POP
+                ( Success case. )
+                OVER setnb ( mark bits as reserved )
+
+                ( compute heap offset and return pointer )
+                [ HEAP_MAP_BASE @d a_b->a_bit ] LITERAL SWAP -
+                12 SWAP << [ HEAP_BASE @d ] LITERAL +
+                EXIT
+            ELSE
+                + ( skip the run )
+            THEN
+        ELSE
+            POP 1 +
+        THEN
+    REPEAT
+    C> POP POP -1
+;
 
 ( Free n pages starting from addr, takes address and number of pages to free, returns nothing. )
-: pFREE ;
+: pFREE
+    [ HEAP_BASE @d ] LITERAL SWAP - 12 SWAP >> ( compute index into bitmap )
+    [ HEAP_MAP_BASE @d a_b->a_bit ] LITERAL + clnb ( index the bitmap and clear n bits in it )
+;
