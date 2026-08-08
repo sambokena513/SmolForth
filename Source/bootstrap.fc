@@ -322,18 +322,18 @@ COMP_START LATEST 4 + !d
 
 // CSTCK is the control flow stack, and CSPTR points to the next free slot in it.
 WORD_T VARIABLE CSPTR
-64 DWORD_T * VARIABLE CSTCK
+64 QWORD_T * VARIABLE CSTCK
 // initialize the stack pointer to index 0 in the control flow stack
 CSTCK CSPTR !w
 
 // >C puts one value into the control flow stack
-: >C CSPTR @w !d CSPTR @w DWORD_T + CSPTR !w ;
+: >C CSPTR @w !q CSPTR @w QWORD_T + CSPTR !w ;
 
 // C> pops one value from the control flow stack
-: C> CSPTR @w DWORD_T SWAP - CSPTR !w CSPTR @w @d ;
+: C> CSPTR @w QWORD_T SWAP - CSPTR !w CSPTR @w @q ;
 
 // read the value at the top of the control flow stack without popping it
-: C@ CSPTR @w DWORD_T SWAP - @d ;
+: C@ CSPTR @w QWORD_T SWAP - @q ;
 
 // conditionals
 : IF 0 COMPILE 0BRANCH HERE >C ; IMMEDIATE
