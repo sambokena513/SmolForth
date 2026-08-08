@@ -106,3 +106,6 @@ Returns the length of the run, which can be anywhere from 0 to n. )
     [ HEAP_BASE @d ] LITERAL SWAP - 12 SWAP >> ( compute index into bitmap )
     [ HEAP_MAP_BASE @d a_b->a_bit ] LITERAL + clnb ( index the bitmap and clear n bits in it )
 ;
+
+( TODO: this allocator technically works but if we added 1 to 2 levels of summary bitmaps and a little 
+more metadata it could be a lot faster for fragmented heaps or ones that have few free pages. Though that's for later. )
