@@ -68,9 +68,17 @@ BYTE_T VARIABLE NEWLINE 10 NEWLINE !b
 does not handle escape sequences. )
 CREATE "
 : r"
+    0 COMPILE BRANCH HERE >C
+    HERE
+
     GETCHAR BEGIN
     DUP 34 <> WHILE
         ,b GETCHAR
     REPEAT
+    POP
     0 ,b
+
+    COMPILE THEN
+    COMPILE LITERAL
+    
 ; IMMEDIATE
