@@ -4,7 +4,7 @@
 # just to work
 
 import os
-os.chdir("../Source")
+os.chdir("./Source")
 
 class Macro:
     def __init__(self, name: str, body: list[str]) -> None:

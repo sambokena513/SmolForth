@@ -12,9 +12,11 @@
 : READ 0 SYSCALL3 ;
 : WRITE 1 SYSCALL3 ;
 : OPENAT 257 SYSCALL4 ;
-: OPEN -100 OPENAT ;
+( Instead of directly invoking sys_open since it's a bit old now
+we just call sys_openat while specifying that the path is relative to the CWD. )
+: OPEN -100 OPENAT ; 
 : CLOSE 3 SYSCALL1 ;
 
 ( For now this just contains basic string printing wrappers that assume full writes and ignore errors. )
-: PUTLN 0 DUP DUP 1 NEWLINE BASE + 1 DUP SYSCALL POP ;
-: PRINTLN DUP STRLEN SWAP >C >C 0 DUP DUP C> C> BASE + 1 DUP SYSCALL POP PUTLN ;
+: PUTLN 1 NEWLINE BASE + 1 WRITE POP ;
+: PRINTLN DUP STRLEN SWAP BASE + 1 WRITE POP PUTLN ;
