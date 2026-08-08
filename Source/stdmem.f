@@ -64,9 +64,13 @@ Returns the length of the run, which can be anywhere from 0 to n. )
     POP POP
 ;
 
-( Check if there is a run of *at least* n zero bits starting at addr, takes an address and desired run length.
-Returns true if there is such a run, and false if there is not. )
-: n0RUN? OVER SWAP 0RUN == ;
+: MIN
+    OVER OVER < IF
+        SWAP POP ( if a is smaller return a )
+    ELSE
+        POP ( if b is smaller or equal return b )
+    THEN
+;
 
 ( Attempt to allocate n pages, returns the address of the first page if succesful, or -1 for failure. )
 : pALLOC
@@ -74,10 +78,13 @@ Returns true if there is such a run, and false if there is not. )
     [ HEAP_MAP_BASE @d a_b->a_bit ] LITERAL
     BEGIN
     DUP [ HEAP_BASE @d a_b->a_bit ] LITERAL > WHILE ( stop looping when we hit the end of the bitmap )
-        DUP C@ SWAP 0RUN DUP IF
-            DUP C@ == IF
+        DUP
+        ( Clamp run length for 0RUN to stay in the bitmap. )
+        DUP [ HEAP_BASE @d a_b->a_bit ] LITERAL - C@ MIN
+        SWAP 0RUN DUP IF ( Try to find a run of n free pages. )
+            DUP C@ == IF ( If the run is the right length we allocate it )
                 C> POP
-                ( Success case. )
+
                 OVER setnb ( mark bits as reserved )
 
                 ( compute heap offset and return pointer )
@@ -85,10 +92,10 @@ Returns true if there is such a run, and false if there is not. )
                 12 SWAP << [ HEAP_BASE @d ] LITERAL +
                 EXIT
             ELSE
-                + ( skip the run )
+                + ( if run is shorter than requested we increment by it to avoid needlessly rescanning )
             THEN
         ELSE
-            POP 1 +
+            POP 1 + ( finally if there is no run we increment by 1 bit )
         THEN
     REPEAT
     C> POP POP -1
