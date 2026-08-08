@@ -520,6 +520,7 @@ db "POP", 0
 ; It then returns the address the string starts at.
 I64TS:
 dPOP rsi ; pointer
+resPTR rsi
 dPOP rax ; i64
 mov rbx, 1 ; is rax negative?, initialized as true
 mov rcx, 10 ; divisor
@@ -552,6 +553,7 @@ dec rsi
 
 .end:
 inc rsi
+unresPTR rsi
 dPUSH rsi
 ret
 I64TS_entry:
@@ -574,11 +576,13 @@ lea rsi, [r14 + 48]
 dPOP rax ; pop val arg
 dPUSH rsi ; save rsi for later
 dPUSH rax ; push val arg
+unresPTR rsi
 dPUSH rsi ; push addr arg
 
 call I64TS ; convert to string
 
 dPOP rsi ; start addr
+resPTR rsi
 dPOP rdx ; end addr
 
 mov byte [rdx], 0xA ; replace null delimiter with newline
