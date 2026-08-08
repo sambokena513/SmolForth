@@ -6,12 +6,15 @@ This allows user code to use dynamic memory or to implement more sophisticated a
 DWORD_T VARIABLE HEAP_BASE 512 1024 1024 * * HEAP_BASE !d
 DWORD_T VARIABLE HEAP_MAP_BASE 8 4096 HEAP_BASE @d 3 * / / HEAP_BASE @d - HEAP_MAP_BASE !d
 
+: a_b->a_bit 3 SWAP << ;
+: a_bit->a_b 3 SWAP >> ;
+
 ( @bit takes an image-relative bit address,
 and fetches the corresponding bit,
 returning either a 1 or a 0. )
 : @bit 
     ( Since we don't have modulo we do it manually here. )
-    DUP 8 SWAP / SWAP OVER 8 * SWAP - SWAP
+    DUP a_bit->a_b SWAP OVER a_b->a_bit SWAP - SWAP
     ( now the TOS is the byte address and NOS is the bit offset )
     @b >> 1 &
 ;
@@ -20,7 +23,7 @@ returning either a 1 or a 0. )
 and sets a bit to that value. )
 : !bit 
     SWAP >C
-    DUP 8 SWAP / SWAP OVER 8 * SWAP - SWAP
+    DUP a_bit->a_b SWAP OVER a_b->a_bit SWAP - SWAP
     SWAP OVER @b SWAP
     C> IF
        1 << |
@@ -40,9 +43,6 @@ Returns the length of the run, which can be anywhere from 0 to n. )
     REPEAT
     SWAP C> POP POP 
 ;
-
-: a_b->a_bit 8 * ;
-: a_bit->a_b 8 SWAP / ;
 
 ( Set n bits to 1, takes a bit address and count. )
 : setnb
