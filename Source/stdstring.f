@@ -49,9 +49,8 @@ BYTE_T VARIABLE WHITESPACE 32 WHITESPACE !b
 BYTE_T VARIABLE NEWLINE 10 NEWLINE !b
 
 ( Get one character from the terminal input buffer and advance the parsing cursor. )
-( This is very buggy for some reason, clearly it doesn't handle all input edge cases that WORD does. )
-: GETCHAR 
-    TIB_LEN 255 == IF
+: GETCHAR
+    TIB_LEN 255 & 255 == IF
         CLEAR
         TSELF
     THEN
@@ -61,7 +60,7 @@ BYTE_T VARIABLE NEWLINE 10 NEWLINE !b
         TSELF
     THEN
 
-    TIB_IDX aTIB + @b
+    TIB_IDX 255 & aTIB + @b
     TIB_IDX 1 + aTIB_IDX !b
 ;
 
