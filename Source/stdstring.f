@@ -13,7 +13,7 @@
         1 + SWAP 1 + SWAP
     REPEAT
     POP
-    POP
+    0 SWAP !b
 ;
 : STRCMP
     BEGIN
@@ -64,21 +64,33 @@ BYTE_T VARIABLE NEWLINE 10 NEWLINE !b
     TIB_IDX 1 + aTIB_IDX !b
 ;
 
-( Compiles a string constant into a definition,
-does not handle escape sequences. )
-CREATE "
-: r"
-    0 COMPILE BRANCH HERE >C
-    HERE
-
+( Compile characters until " delimiter. )
+: "
     GETCHAR BEGIN
     DUP 34 <> WHILE
         ,b GETCHAR
     REPEAT
     POP
-    0 ,b
+; IMMEDIATE
 
+( Mark the start of a string literal, used when you want to emit specific bytes
+since our general string parser does not handle escapes. )
+: /'
+    0 COMPILE BRANCH HERE >C
+    HERE
+; IMMEDIATE
+
+( Mark the end of a string literal. )
+: '/
+    0 ,b
     COMPILE THEN
     COMPILE LITERAL
-    
+; IMMEDIATE
+
+( Compiles a string constant into a definition,
+does not handle escape sequences. )
+: r"
+    COMPILE /'
+    COMPILE "
+    COMPILE '/
 ; IMMEDIATE
