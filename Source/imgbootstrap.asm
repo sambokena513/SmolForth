@@ -1101,7 +1101,9 @@ dd BRANCH
 db IMMEDIATE
 db "BRANCH", 0
 
-; ABORT prints an error message and empties the TIB,
+; ABORT prints an error message, and aborts the current outer interpreter \
+; operation by clearing the TIB and setting stdin to /dev/tty to avoid continuing to read \
+; commands from a file after an error.
 ; it takes the image-relative address of the string to print.
 ABORT:
 dPOP rsi
@@ -1122,6 +1124,12 @@ syscall
 
 mov byte [rel tib_len], 0
 mov byte [rel tib_idx], 0
+
+lea rsi, [rel refill_path]
+SYS_OPENAT AT_FDCWD, rsi, O_RDONLY, 0
+mov rbx, rax
+SYS_DUP2 rbx, 0
+SYS_CLOSE rbx
 ret
 ABORT_entry:
 dd BRANCH_entry

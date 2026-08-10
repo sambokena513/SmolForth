@@ -94,3 +94,12 @@ does not handle escape sequences. )
     COMPILE "
     COMPILE '/
 ; IMMEDIATE
+
+( REPL wrapper for ,b to make emitting bytes in string literals a bit easier. )
+: [,b] 
+    WORD NUMBER? IF 
+        POP r" Not a number!" ABORT
+    ELSE
+        ,b
+    THEN
+; IMMEDIATE
