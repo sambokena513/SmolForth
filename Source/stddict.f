@@ -22,15 +22,15 @@ words for easier metaprogramming. )
     0 DUP DUP 1 NEWLINE BASE + 1 DUP SYSCALL POP
 ;
 
-( EXISTS? is a wrapper around FIND that returns whether a word matching a string
+( __EXISTS? is a wrapper around FIND that returns whether a word matching a string
 given to it is in the dictionary. )
-: EXISTS? FIND -1 == IF 0 ELSE -1 THEN ;
+: __EXISTS? FIND -1 == IF 0 ELSE -1 THEN ;
 
-( FORGET takes a string pointer representing a word name
+( __FORGET takes a string pointer representing a word name
 and modifies the dictionary such that the word preceding it links
 to the word after the target instead.
-Note that FORGET does not free memory, it only removes a word from the search space. )
-: FORGET
+Note that __FORGET does not free memory, it only removes a word from the search space. )
+: __FORGET
     DUP FIND -1 == IF
         -1 ( Return -1 for error. )
     ELSE
@@ -48,6 +48,6 @@ Note that FORGET does not free memory, it only removes a word from the search sp
     THEN
 ;
 
-( REPL wrappers. )
-: WORD-EXISTS? WORD EXISTS? . ;
-: WORD-FORGET WORD FORGET . ;
+( REPL versions of __EXISTS? and __FORGET )
+: EXISTS? WORD __EXISTS? ;
+: FORGET WORD __FORGET ;
