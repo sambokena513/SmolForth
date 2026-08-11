@@ -107,5 +107,58 @@ Returns the length of the run, which can be anywhere from 0 to n. )
     [ HEAP_MAP_BASE @d a_b->a_bit ] LITERAL + clnb ( index the bitmap and clear n bits in it )
 ;
 
-( TODO: this allocator technically works but if we added 1 to 2 levels of summary bitmaps and a little 
-more metadata it could be a lot faster for fragmented heaps or ones that have few free pages. Though that's for later. )
+(
+    Design for the improved allocator:
+
+        Metadata:
+
+            - extent list
+            - buckets
+            - extents
+
+            extent := Struct with the shape:
+
+                dd start_page
+                dd page_count
+                dd prev
+                dd next
+
+                represents N free pages.
+
+            extent list := doubly-linked list of extents ordered
+            by place in the heap, note that this list is *intrusive*,
+            meaning each extent node is placed inside the actual free
+            page/pages, this causes some extra copying when splitting or resizing
+            extents but it also fixes a large issue we would otherwise have of
+            how to reuse extent node memory when the actual backing memory of
+            the linked list only lets us move forward, not reuse nodes.
+
+            buckets := A bucket is a stack of extent pointers
+                in a size class, where we have 5 size classes:
+
+                - 1-8
+                - 8-16
+                - 17-32
+                - 32-64
+                - over 64
+
+        Allocation:
+
+            Select the size class of the allocation, and pop one extent
+            from the corresponding bucket (if empty just use a bigger bucket),
+            then if allocation is equal to extent size just remove the extent
+            and return the page address, else split off a chunk of the extent
+            and return the address of the removed part, while moving it to a
+            different bucket if it changed size classes.
+
+        Freeing:
+
+            Search the extent list for the extent right before the address being
+            freed, if its end address matches the start of the freed address,
+            extend it, then if its end address suddenly matches the start of the
+            next extent, merge repeatedly until it does not match, then if it 
+            changed size class, search for it in its bucket, remove it, and insert
+            it into its new bucket.
+            If the addresses do not match, just create a new extent and insert it
+            into the appropriate bucket.
+)
