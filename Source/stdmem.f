@@ -107,8 +107,13 @@ Returns the length of the run, which can be anywhere from 0 to n. )
     [ HEAP_MAP_BASE @d a_b->a_bit ] LITERAL + clnb ( index the bitmap and clear n bits in it )
 ;
 
+( Note, this allocator works as something very basic for getting dynamic memory into our language,
+but fundamentally bitmap allocators are much better for allocating physical memory than virtual memory,
+since it lets you make several incredibly fast 1-page allocations and then map those pages to a contiguous
+virtual address range instead of O(n) run scanning. Below is a design for an allocator that should be a little faster. )
+
 (
-    Design for the improved allocator:
+    Allocator Design:
 
         Metadata:
 
@@ -118,34 +123,46 @@ Returns the length of the run, which can be anywhere from 0 to n. )
 
             extent := Struct with the shape:
 
-                dd start_page
-                dd page_count
-                dd prev
-                dd next
+                struct extent {
+                    i32 start_page;
+                    i32 page_count;
 
-                represents N free pages.
+                    struct extent *prev;
+                    struct extent *next;
+
+                    struct extent *prev_bucket;
+                    struct extent *next_bucket;
+                };
+
+                Each extent represents N free pages.
 
             extent list := doubly-linked list of extents ordered
             by place in the heap, note that this list is *intrusive*,
             meaning each extent node is placed inside the actual free
             page/pages, this causes some extra copying when splitting or resizing
-            extents but it also fixes a large issue we would otherwise have of
+            extents but it also fixes a large issue when we would otherwise have the problem of
             how to reuse extent node memory when the actual backing memory of
             the linked list only lets us move forward, not reuse nodes.
 
-            buckets := A bucket is a stack of extent pointers
-                in a size class, where we have 5 size classes:
+            buckets := A bucket is a list of extents in a size class,
+                where we have these size classes:
 
-                - 1-8
-                - 8-16
-                - 17-32
-                - 32-64
-                - over 64
+                - 1
+                - 2-3
+                - 4-7
+                - 8-15
+                - 16-31
+                - 32-63
+                - 64-127
+                - 128-255
+                - 256-511
+                - 512-1023
+                - 1024+
 
         Allocation:
 
-            Select the size class of the allocation, and pop one extent
-            from the corresponding bucket (if empty just use a bigger bucket),
+            Select the smallest size class that is guaranteed to satisfy the allocation,
+            and pop one extent from the corresponding bucket (if empty just use a bigger bucket),
             then if allocation is equal to extent size just remove the extent
             and return the page address, else split off a chunk of the extent
             and return the address of the removed part, while moving it to a
@@ -161,4 +178,63 @@ Returns the length of the run, which can be anywhere from 0 to n. )
             it into its new bucket.
             If the addresses do not match, just create a new extent and insert it
             into the appropriate bucket.
+
+        Failure Mode:
+
+            Assuming user code calls the allocator with valid arguments only
+            allocation can fail, which happens when we either exhaust all available memory,
+            or when we hit the final bucket and do not find any extent suitable for the
+            allocation.
+
+        Invariants:
+
+            - No two extents may describe overlapping memory regions.
+            - Different buckets may not reference the same extents.
+            - Extents may not exist in user-owned memory, they must instead be
+            - at the start of the free area they describe.
+            - An extent's page_count may not be under 1, and its start_page may not be under 0.
+            - There is a finite, statically known number of buckets.
+            - A bucket may not reference extents smaller than its size class.
+            - Neither the extent list nor buckets may link back to themselves,
+                there must be a definite start and end to each linked list.
+
+        Userspace API:
+
+            <n> pALLOC - allocate n pages,
+                Returns the address of the first page allocated,
+                or -1 if it couldn't find enough memory.
+
+            <n> <addr> pFREE - free n pages at addr
+                Does not have a return value, note that n must
+                equal the n passed to pALLOC on the call that
+                returned addr.
+
+        Asymptotics:
+
+            Allocate - O(1) if the allocation fits into a specialized size class,
+                O(n) where n = extent_count if the allocation hits the final bucket.
+
+            Free - O(n) where n = extent_count
+
+        Rationale:
+
+            Many programs, including allocators, work by making many allocations
+            over the course of their runtime and releasing memory either only when
+            exiting, or after finishing a major procedure.
+
+            Thus the important performance characteristic of an allocator is its
+            ability to allocate memory, not release it, programs may make many
+            allocations in hot loops yet wait until a safe point to free memory.
+
+            Alongside that performance concern it's important to remember that this
+            is a basic low level page allocator, when a user is free to call a malloc()
+            implementation that handles freeing more efficiently, or simply use a slab allocator,
+            it becomes less important to deal with fine-grained allocations or quick freeing because
+            fundamentally the use case becomes reserving memory for other systems, not allocating
+            individual structs or variables.
+
+            To that end we make the smallest allocation unit be the page, which is defined as 4KB here,
+            and use size classes as an index over the free list to make allocations from 1 to 1024 pages
+            be O(1).
+
 )
