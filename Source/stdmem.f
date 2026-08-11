@@ -144,20 +144,23 @@ virtual address range instead of O(n) run scanning. Below is a design for an all
             how to reuse extent node memory when the actual backing memory of
             the linked list only lets us move forward, not reuse nodes.
 
-            buckets := A bucket is a list of extents in a size class,
-                where we have these size classes:
+            buckets := A bucket is a list of extents meeting a minimum size,
+                with these thresholds:
 
-                - 1
-                - 2-3
-                - 4-7
-                - 8-15
-                - 16-31
-                - 32-63
-                - 64-127
-                - 128-255
-                - 256-511
-                - 512-1023
-                - 1024+
+                - extent_size == 1
+                - extent_size >= 2
+                - extent_size >= 4
+                - extent_size >= 8
+                - extent_size >= 16
+                - extent_size >= 32
+                - extent_size >= 64
+                - extent_size >= 128
+                - extent_size >= 256
+                - extent_size >= 512
+                - extent_size >= 1024
+
+                Note; an extent always belongs exactly to one bucket,
+                that being the largest it meets the minimum size for.
 
         Allocation:
 
