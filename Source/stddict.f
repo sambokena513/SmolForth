@@ -32,7 +32,7 @@ to the word after the target instead.
 Note that __FORGET does not free memory, it only removes a word from the search space. )
 : __FORGET
     DUP FIND -1 == IF
-        -1 ( Return -1 for error. )
+        POP -1 ( Return -1 for error. )
     ELSE
         >C
         aINTERPS BEGIN

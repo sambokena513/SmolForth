@@ -286,10 +286,12 @@ COMP_START LATEST 4 + !d
 : ; COMPILE [ -61 ,b WNB MKENTR COMP_START LATEST 4 + !d [ -61 ,b WNB MKENTR COMP_START LATEST 4 + !d IMMEDIATE
 
 // With these words we round out the set of words for manipulating interpreter state.
+: aSTATE aINTERPS 8 + ;
 : aSCAN_START aINTERPS 9 + ;
 : aTIB_IDX aINTERPS 14 + ;
 : aTIB_LEN aINTERPS 15 + ;
 : aTIB aINTERPS 16 + ;
+: STATE aSTATE @b ;
 : SCAN_START aSCAN_START @b ;
 : TIB_IDX aTIB_IDX @b ;
 : TIB_LEN aTIB_LEN @b ;

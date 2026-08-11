@@ -19,4 +19,5 @@ we just call sys_openat while specifying that the path is relative to the CWD. )
 
 ( For now this just contains basic string printing wrappers that assume full writes and ignore errors. )
 : PUTLN 1 NEWLINE BASE + 1 WRITE POP ;
-: PRINTLN DUP STRLEN SWAP BASE + 1 WRITE POP PUTLN ;
+: PRINT DUP STRLEN SWAP BASE + 1 WRITE POP ;
+: PRINTLN PRINT PUTLN ;
