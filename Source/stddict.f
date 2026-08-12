@@ -61,4 +61,4 @@ invalidated. )
 this is not valid to use on words that were created using the `CREATE word ALIAS target` phrase,
 as those do not have their entries placed right after their bodies.
 And neither does it work on fresh dict entries that are still using the placeholder code pointer. )
-: WORDLEN GETENTR DUP 4 + @d SWAP - ;
+: WORDLEN ' DUP 4 + @d SWAP - ;
