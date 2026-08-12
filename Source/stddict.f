@@ -24,7 +24,7 @@ words for easier metaprogramming. )
 
 ( __EXISTS? is a wrapper around FIND that returns whether a word matching a string
 given to it is in the dictionary. )
-: __EXISTS? FIND -1 == IF 0 ELSE -1 THEN ;
+: __EXISTS? FIND -1 == ~ ;
 
 ( __FORGET takes a string pointer representing a word name
 and modifies the dictionary such that the word preceding it links

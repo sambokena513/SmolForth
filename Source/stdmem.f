@@ -1,4 +1,4 @@
-( Dependencies: bootstrap.f, stdstring.f, stdio.f )
+( Dependencies: bootstrap.f, stdstring.f, stdio.f, stdassert.f )
 
 ( <stdmem.f> :; This file implements an extent-based page allocator managing a 1.5GB heap.
 This allows user code to use dynamic memory or to implement more sophisticated allocators. )
@@ -144,10 +144,26 @@ DWORD_T 11 * VARIABLE BUCKETS
 : INDEXd * + @d ;
 : INDEXq * + @q ;
 
-( TODO:
+( initialize allocator state. )
 : HEAP_INIT
-
-
-    [ 8 4096 HEAP_BASE 3 * / ] LITERAL
+    TODO"
+        HEAP_INIT should initialize the allocator by clearing the buckets,
+        and making an extent with a length of 393216 pages, as well as setting
+        the extent list to point to it.
+        "
 ;
-)
+
+( walk the heap and dump metadata, printing out the extent list and every bucket )
+: HEAP_MDUMP
+    TODO" HEAP_MDUMP should print out the current allocator metadata."
+;
+
+( allocate n pages )
+: pALLOC
+    TODO" pALLOC should allocate n pages and return the address of the first."
+;
+
+( free n pages )
+: pFREE 
+    TODO" pFREE should take an address and count and free that many pages."
+;
