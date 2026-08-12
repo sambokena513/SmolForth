@@ -82,7 +82,11 @@ The standard library tries to be unopinionated in low level functionality, thoug
 
 - <stddict.f> :; Dictionary manipulation and listing words, required for code that wants to remove dictionary entries after compilation (to avoid polluting the global scope), but other than that it's mostly useful in the REPL.
 
-- <stdmem.f> :; Dynamic memory allocation in the form of a first-fit bitmap page allocator with no summary bitmaps, very poor performance but this is what lets you build more complex memory management on top of it. Reserves the last 1.5GB of the image for its "heap", and 48KB right before it for the bitmap.
+- <stdmem.f> :; Dynamic memory allocation in the form of a page allocator API:
+    - <n> pALLOC - Allocates n contiguous pages and returns the address of the first one.
+    - <n> <addr> pFREE - Frees n pages starting at addr.
+
+- <stdio.f> :; Input-output words and syscall wrappers, note that the syscall wrappers take absolute addresses and not image-relative ones.
 
 ## Primitive Word List:
 

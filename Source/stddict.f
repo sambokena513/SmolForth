@@ -54,7 +54,7 @@ Note that __FORGET does not free memory, it only removes a word from the search 
 
 ( GETENTR is an alternative to the usual `CLEAR WORD word` phrase that behaves atomically,
 this makes it simpler to use without needing to worry about parser state and pointers getting
-invlidated. )
+invalidated. )
 : GETENTR WORD FIND ;
 
 ( WORDLEN is a simple word that gets the length of a colon definition,
