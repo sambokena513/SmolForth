@@ -1,6 +1,6 @@
 ( Dependencies: bootstrap.f, stdstring.f, stdio.f )
 
-( <stdmem.f> :; This file implements an extent-bassed page allocator managing a 1.5GB heap.
+( <stdmem.f> :; This file implements an extent-based page allocator managing a 1.5GB heap.
 This allows user code to use dynamic memory or to implement more sophisticated allocators. )
 
 (
@@ -112,11 +112,11 @@ This allows user code to use dynamic memory or to implement more sophisticated a
 
         Rationale:
 
-            Many programs, including allocators, work by making many allocations
+            Many programs, including higher-level allocators, work by making many allocations
             over the course of their runtime and releasing memory either only when
             exiting, or after finishing a major procedure.
 
-            Thus the important performance characteristic of an allocator is its
+            Thus the important performance characteristic of a page allocator is its
             ability to allocate memory, not release it, programs may make many
             allocations in hot loops yet wait until a safe point to free memory.
 
@@ -133,7 +133,7 @@ This allows user code to use dynamic memory or to implement more sophisticated a
 )
 
 ( 1.5GB heap )
-DWORD_T VARIABLE HEAP_BASE 512 1024 1024 * * HEAP_BASE !d
+512 1024 1024 * * CONSTANT HEAP_BASE
 
 ( 12 i32 slots so that's 48 bytes of external metadata for the allocator. )
 DWORD_T VARIABLE EXTENT_LIST
@@ -148,5 +148,6 @@ DWORD_T 11 * VARIABLE BUCKETS
 : HEAP_INIT
 
 
-    [ 8 4096 HEAP_BASE @d 3 * / ] LITERAL
+    [ 8 4096 HEAP_BASE 3 * / ] LITERAL
+;
 )

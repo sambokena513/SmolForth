@@ -352,8 +352,27 @@ CSTCK CSPTR !w
 // After all, BEGIN IF REPEAT is a bit weird and makes it unclear whether there should be a THEN.
 CREATE WHILE ALIAS IF IMMEDIATE
 
-: INT64_MIN -9223372036854775808 ;
-: INT64_MAX 9223372036854775807 ;
+// CONSTANT is a defining word that pops a value from the stack \
+// and defines a word who's behaviour is to push that value.
+// It's complicated slightly by __CONSTANT, which exists for \
+// an optimization; we make the new word immediate and then \
+// based on whether it's used inside a definition or not \
+// we can directly compile the literal instead of at runtime \
+// always calling the word.
+// Essentially, this means that `: A 2 ;` and `2 CONSTANT X ` : A X ; \
+// should result in the same compiled code, but just using `X` in the REPL \
+// will not accidentally compile a literal, but rather just push the value.
+: __CONSTANT STATE IF COMPILE LITERAL THEN ;
+: CONSTANT 
+    :
+    COMPILE LITERAL
+    [ CLEAR WORD __CONSTANT FIND ] LITERAL ECR32
+    COMPILE ;
+    IMMEDIATE
+;
+
+-9223372036854775808 CONSTANT INT64_MIN
+9223372036854775807 CONSTANT INT64_MAX
 
 // "emit jump rel32", this is used for tail calls,
 // note that since the compiler doesn't know when definitions end \

@@ -51,3 +51,14 @@ Note that __FORGET does not free memory, it only removes a word from the search 
 ( REPL versions of __EXISTS? and __FORGET )
 : EXISTS? WORD __EXISTS? ;
 : FORGET WORD __FORGET ;
+
+( GETENTR is an alternative to the usual `CLEAR WORD word` phrase that behaves atomically,
+this makes it simpler to use without needing to worry about parser state and pointers getting
+invlidated. )
+: GETENTR WORD FIND ;
+
+( WORDLEN is a simple word that gets the length of a colon definition,
+this is not valid to use on words that were created using the `CREATE word ALIAS target` phrase,
+as those do not have their entries placed right after their bodies.
+And neither does it work on fresh dict entries that are still using the placeholder code pointer. )
+: WORDLEN GETENTR DUP 4 + @d SWAP - ;
