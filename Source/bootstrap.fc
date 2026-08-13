@@ -299,14 +299,6 @@ COMP_START LATEST 4 + !d
 // Useful for debugging without accidentally corrupting the stack.
 : PEEK DUP . ;
 
-// Since this Forth is untyped, the only thing we \
-// really care about is the *size* of a variable,
-// these words define the common data widths.
-: BYTE_T 1 ;
-: WORD_T 2 ;
-: DWORD_T 4 ;
-: QWORD_T 8 ;
-
 // VARIABLE is relatively complicated, but essentially we \
 // create a new word, and make that word push the address of a \
 // block of memory it owns, who's size is the argument to VARIABLE.
@@ -323,19 +315,19 @@ COMP_START LATEST 4 + !d
 : ALIAS WORD FIND 4 + @d >CODE ;
 
 // CSTCK is the control flow stack, and CSPTR points to the next free slot in it.
-WORD_T VARIABLE CSPTR
-64 QWORD_T * VARIABLE CSTCK
+2 VARIABLE CSPTR
+64 8 * VARIABLE CSTCK
 // initialize the stack pointer to index 0 in the control flow stack
 CSTCK CSPTR !w
 
 // >C puts one value into the control flow stack
-: >C CSPTR @w !q CSPTR @w QWORD_T + CSPTR !w ;
+: >C CSPTR @w !q CSPTR @w 8 + CSPTR !w ;
 
 // C> pops one value from the control flow stack
-: C> CSPTR @w QWORD_T SWAP - CSPTR !w CSPTR @w @q ;
+: C> CSPTR @w 8 SWAP - CSPTR !w CSPTR @w @q ;
 
 // read the value at the top of the control flow stack without popping it
-: C@ CSPTR @w QWORD_T SWAP - @q ;
+: C@ CSPTR @w 8 SWAP - @q ;
 
 // conditionals
 : IF 0 COMPILE 0BRANCH HERE >C ; IMMEDIATE
@@ -373,6 +365,14 @@ CREATE WHILE ALIAS IF IMMEDIATE
 
 -9223372036854775808 CONSTANT INT64_MIN
 9223372036854775807 CONSTANT INT64_MAX
+
+// Since this Forth is untyped, the only thing we \
+// really care about is the *size* of a variable,
+// these words define the common data widths.
+1 CONSTANT BYTE_T
+2 CONSTANT WORD_T
+4 CONSTANT DWORD_T
+8 CONSTANT QWORD_T
 
 // "emit jump rel32", this is used for tail calls,
 // note that since the compiler doesn't know when definitions end \

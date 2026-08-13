@@ -1,4 +1,4 @@
-( Dependencies: bootstrap.f, stdstring.f, stdio.f, stdassert.f )
+( Dependencies: bootstrap.f, stdstring.f, stdio.f, stdassert.f, stddict.f )
 
 ( <stdmem.f> :; This file implements an extent-based page allocator managing a 1.5GB heap.
 This allows user code to use dynamic memory or to implement more sophisticated allocators. )
@@ -139,18 +139,36 @@ This allows user code to use dynamic memory or to implement more sophisticated a
 DWORD_T VARIABLE EXTENT_LIST
 DWORD_T 11 * VARIABLE BUCKETS
 
-: INDEXb * + @b ;
-: INDEXw * + @w ;
-: INDEXd * + @d ;
-: INDEXq * + @q ;
+QWORD_T VARIABLE ARR
+: INDEX
+    [ ARR ] LITERAL !q
+    * [ ARR ] LITERAL @q +
+;
+FORGET ARR POP
 
 ( initialize allocator state. )
 : HEAP_INIT
-    TODO"
-        HEAP_INIT should initialize the allocator by clearing the buckets,
-        and making an extent with a length of 393216 pages, as well as setting
-        the extent list to point to it.
-        "
+
+    ( start_page = 0, page_count = size of heap in pages )
+    0 0 DWORD_T HEAP_BASE INDEX !d
+    393216 1 DWORD_T HEAP_BASE INDEX !d
+
+    ( Because this is currently the only extent we just zero the link pointers. )
+    0 2 DWORD_T HEAP_BASE INDEX !d
+    0 3 DWORD_T HEAP_BASE INDEX !d
+    0 4 DWORD_T HEAP_BASE INDEX !d
+    0 5 DWORD_T HEAP_BASE INDEX !d
+
+    ( Make the extent list point to our first extent. )
+    HEAP_BASE EXTENT_LIST !d
+
+    ( Set every bucket pointer but the last one to 0 )
+    0 BEGIN
+        0 OVER DWORD_T BUCKETS INDEX !d
+        1 +
+    DUP 10 == UNTIL
+    ( And then set the 1024+ bucket to point to our one extent. )
+    HEAP_BASE SWAP DWORD_T BUCKETS INDEX !d
 ;
 
 ( walk the heap and dump metadata, printing out the extent list and every bucket )
