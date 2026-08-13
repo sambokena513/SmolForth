@@ -64,14 +64,9 @@ This allows user code to use dynamic memory or to implement more sophisticated a
 
         Freeing:
 
-            Search the extent list for the extent right before the address being
-            freed, if its end address matches the start of the freed address,
-            extend it, then if its end address suddenly matches the start of the
-            next extent, merge repeatedly until it does not match, then if it 
-            changed size class, search for it in its bucket, remove it, and insert
-            it into its new bucket.
-            If the addresses do not match, just create a new extent and insert it
-            into the appropriate bucket.
+            Make new extent and insert it into the extent_list while preserving order.
+            (this is why free is O(n)) Merge with adjacent extents if addresses match,
+            then insert into the appropriate bucket.
 
         Failure Mode:
 
