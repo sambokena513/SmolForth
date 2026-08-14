@@ -1,6 +1,6 @@
 ( Dependencies: bootstrap.f, stdstring.f, stdio.f )
 
-( <stderror.f> :; Basic handling for fatal or near-fatal errors. )
+( <stdassert.f> :; Basic handling for fatal or near-fatal errors. )
 
 ( Print an error message, reset REPL state, and start a nested REPL.
 Lets the user choose whether to kill the process or try to repair state
