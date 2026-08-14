@@ -175,7 +175,7 @@ FORGET ARR POP
     DUP 8 + @d r" prev " PRINT .
     DUP 12 + @d r" next " PRINT .
     DUP 16 + @d r" prev_bucket " PRINT .
-    12 + @d r" next_bucket " PRINT .
+    20 + @d r" next_bucket " PRINT .
     r" -----EXTENT-----" PRINTLN
 ;
 
@@ -184,10 +184,28 @@ FORGET ARR POP
 
     ( Print every extent in address order. )
     EXTENT_LIST @d BEGIN
+    DUP WHILE
         DUP PRINT_EXTENT 12 + @d
-    DUP 0 == UNTIL POP
+    REPEAT POP
 
-    TODO" print out the buckets"
+    ( Print bucket names. )
+    0 BEGIN
+        r" bucket " PRINT
+        DUP PRINTNUM
+        r" :" PRINTLN
+
+        DUP DWORD_T BUCKETS INDEX @d
+        ( Print bucket contents. )
+        BEGIN
+        DUP WHILE
+            r"     " PRINT
+            DUP PRINTNUM
+            20 + @d 
+        REPEAT POP
+        PUTLN
+
+        1 +
+    DUP 11 == UNTIL POP
 ;
 
 ( allocate n pages )

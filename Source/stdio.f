@@ -17,7 +17,10 @@ we just call sys_openat while specifying that the path is relative to the CWD. )
 : OPEN -100 OPENAT ; 
 : CLOSE 3 SYSCALL1 ;
 
+21 VARIABLE NUMBUF
+
 ( For now this just contains basic string printing wrappers that assume full writes and ignore errors. )
 : PUTLN 1 NEWLINE BASE + 1 WRITE POP ;
 : PRINT DUP STRLEN SWAP BASE + 1 WRITE POP ;
 : PRINTLN PRINT PUTLN ;
+: PRINTNUM [ NUMBUF 20 + ] LITERAL I64TS PRINT ;

@@ -526,7 +526,7 @@ mov rbx, 1 ; is rax negative?, initialized as true
 mov rcx, 10 ; divisor
 
 ; add the delimiter first
-xor rdi, rdi
+xor rdx, rdx
 mov byte [rsi], dl
 dec rsi
 
