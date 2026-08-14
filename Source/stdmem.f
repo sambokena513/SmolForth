@@ -166,9 +166,28 @@ FORGET ARR POP
     HEAP_BASE SWAP DWORD_T BUCKETS INDEX !d
 ;
 
+( Pretty-print an extent. )
+: PRINT_EXTENT
+
+    r" -----" DUP PRINT OVER [ WNB 21 + ] LITERAL I64TS PRINT PRINTLN
+    DUP @d r" start_page " PRINT .
+    DUP 4 + @d r" page_count " PRINT .
+    DUP 8 + @d r" prev " PRINT .
+    DUP 12 + @d r" next " PRINT .
+    DUP 16 + @d r" prev_bucket " PRINT .
+    12 + @d r" next_bucket " PRINT .
+    r" -----EXTENT-----" PRINTLN
+;
+
 ( walk the heap and dump metadata, printing out the extent list and every bucket )
 : HEAP_MDUMP
-    TODO" HEAP_MDUMP should print out the current allocator metadata."
+
+    ( Print every extent in address order. )
+    EXTENT_LIST @d BEGIN
+        DUP PRINT_EXTENT 12 + @d
+    DUP 0 == UNTIL POP
+
+    TODO" print out the buckets"
 ;
 
 ( allocate n pages )

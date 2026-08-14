@@ -101,7 +101,7 @@ The standard library tries to be unopinionated in low level functionality, thoug
 - `EXIT` - Removes one return address from the return stack before returning, effectively skipping its own normal return address, can be used to perform an early return in a compiled word, or in the REPL to exit the interpreter.
 - `NUMBER?` - Takes a string and attempts to parse it as a 64-bit signed integer, it returns whether it failed (-1 for failure), and the value of the integer (if it failed then this is set to a placeholder value of -1).
 - `POP` - Moves the data stack pointer down by 8 bytes, effectively removing whatever was on the top of it.
-- `I64TS` - Takes an integer and a pointer to the end of a 21-byte free block, and converts the integer to a string which it writes into this block, and then returns the string start address.
+- `I64TS` - Takes a pointer to the end of a 21-byte free block and an integer, and converts the integer to a string which it writes into this block, and then returns the string start address.
 - `.` - Prints one number to stdout, internally calls I64TS and uses the data stack as the free block.
 - `+ - * / ~ & | ^ << >>` - Arithmetic and bitwise operators.
 - `< > == <> >= <=` - Numeric comparisons operators.

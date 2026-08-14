@@ -299,6 +299,20 @@ COMP_START LATEST 4 + !d
 // Useful for debugging without accidentally corrupting the stack.
 : PEEK DUP . ;
 
+// Patch LATEST's code pointer, taking an address from the stack.
+: >CODE LATEST 4 + !d ;
+
+// Text wrapper for >CODE, gets the code pointer from the next token.
+: ALIAS WORD FIND 4 + @d >CODE ;
+
+// Used in CONSTANT and VARIABLE to remove runtime indirection.
+: __CONSTANT
+    STATE
+    [ 0 0BRANCH HERE ]
+        COMPILE LITERAL
+    [ DUP HERE - SWAP -4 + !d ]
+;
+
 // VARIABLE is relatively complicated, but essentially we \
 // create a new word, and make that word push the address of a \
 // block of memory it owns, who's size is the argument to VARIABLE.
@@ -306,13 +320,23 @@ COMP_START LATEST 4 + !d
 // a size of 8 bytes.
 // Note that VARIABLE shouldn't be called inside colon definitions, this is because \
 // it is a defining word and would corrupt COMP_START as well as LATEST for the word that called it.
-: VARIABLE HERE aCOMP_START !d HERE 18 + COMPILE LITERAL -61 ,b ALLOT CREATE COMP_START LATEST 4 + !d ;
+: VARIABLE
+    // set compilation start pointer
+    HERE aCOMP_START !d
 
-// Patch LATEST's code pointer, taking an address from the stack.
-: >CODE LATEST 4 + !d ;
+    // 23 because we need to skip over the literal,
+    // and the call to __CONSTANT, as well as \
+    // the final ret (17 + 5 + 1).
+    HERE 23 + COMPILE LITERAL 
+    [ CLEAR WORD __CONSTANT FIND ] LITERAL ECR32
+    -61 ,b ALLOT
 
-// Text wrapper for >CODE, gets the code pointer from the next token.
-: ALIAS WORD FIND 4 + @d >CODE ;
+    // make the new variable immediate so __CONSTANT works properly
+    CREATE IMMEDIATE 
+
+    // patch the new word's code pointer
+    COMP_START >CODE
+;
 
 // CSTCK is the control flow stack, and CSPTR points to the next free slot in it.
 2 VARIABLE CSPTR
@@ -354,7 +378,6 @@ CREATE WHILE ALIAS IF IMMEDIATE
 // Essentially, this means that `: A 2 ;` and `2 CONSTANT X ` : A X ; \
 // should result in the same compiled code, but just using `X` in the REPL \
 // will not accidentally compile a literal, but rather just push the value.
-: __CONSTANT STATE IF COMPILE LITERAL THEN ;
 : CONSTANT 
     :
     COMPILE LITERAL
@@ -363,8 +386,13 @@ CREATE WHILE ALIAS IF IMMEDIATE
     IMMEDIATE
 ;
 
+// Integer constants for testing numeric parsers or making sure over/underflow works for different words.
 -9223372036854775808 CONSTANT INT64_MIN
 9223372036854775807 CONSTANT INT64_MAX
+
+// Booleans.
+-1 CONSTANT TRUE
+0 CONSTANT FALSE
 
 // Since this Forth is untyped, the only thing we \
 // really care about is the *size* of a variable,
