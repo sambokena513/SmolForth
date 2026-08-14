@@ -149,6 +149,14 @@ FORGET ARR POP
     THEN
 ;
 
+( Count leading zeros. )
+: __builtin_lzcnt
+    [
+        -13 ,b 73 ,b 15 ,b -67 ,b 70 ,b -8 ,b ( lzcnt rax, [r14 - 8] )
+        73 ,b -119 ,b 70 ,b -8 ,b ( mov [r14 - 8], rax )
+    ]
+;
+
 ( initialize allocator state. )
 : HEAP_INIT
 
@@ -243,7 +251,7 @@ Takes the desired start_page, and returns the new address of the extent. O(n). )
 
 ( Find the appropriate size class and return its bucket, given an allocation size. )
 : GET_BUCKET
-    TODO" GET_BUCKET should turn an allocation size into a bucket address and then return it."
+    -1 + __builtin_lzcnt 64 - 10 MIN
 ;
 
 ( allocate n pages )

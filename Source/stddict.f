@@ -52,7 +52,7 @@ Note that __FORGET does not free memory, it only removes a word from the search 
 : EXISTS? WORD __EXISTS? ;
 : FORGET WORD __FORGET ;
 
-( ' is an alternative to the usual `CLEAR WORD word` phrase that behaves atomically,
+( ' is an alternative to the usual `CLEAR WORD word FIND` phrase that behaves atomically,
 this makes it simpler to use without needing to worry about parser state and pointers getting
 invalidated. )
 : ' WORD FIND ;
