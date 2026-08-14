@@ -20,3 +20,21 @@ and then EXIT back to the caller without them noticing anything amiss. )
     COMPILE r"
     [ ' PANIC ] LITERAL ECR32
 ; IMMEDIATE
+
+( Image-relative stack base pointers, we use these instead of directly referencing
+the ones in the image header because later on coroutines will be able to change this,
+so we don't want to rely on a specific execution context. )
+DWORD_T VARIABLE dSP_BASE 8 @d dSP_BASE !d
+DWORD_T VARIABLE rSP_BASE 12 @d rSP_BASE !d
+
+( Print a backtrace with image relative addresses, note that this does not search
+for a word matching the address, it just prints the address directly.
+Also, unless you've done something really weird with rsp then it should
+also print its own address each time. )
+: BACKTRACE 
+    rSP@ BASE SWAP -
+    BEGIN DUP 
+    rSP_BASE @d > WHILE
+            DUP @q BASE SWAP - . 8 +
+    REPEAT POP
+;
