@@ -134,12 +134,20 @@ This allows user code to use dynamic memory or to implement more sophisticated a
 DWORD_T VARIABLE EXTENT_LIST
 DWORD_T 11 * VARIABLE BUCKETS
 
+( Index an array with the syntax `idx val_size arr INDEX`
+Note that this just computes the address, like lea would in x64, it does not dereference. )
 QWORD_T VARIABLE ARR
-: INDEX
-    [ ARR ] LITERAL !q
-    * [ ARR ] LITERAL @q +
-;
+: INDEX ARR !q * ARR @q + ;
 FORGET ARR POP
+
+( Get the smaller of two numbers, used to clamp values. )
+: MIN
+    OVER OVER < IF
+        SWAP POP ( if a is smaller return a )
+    ELSE
+        POP ( if b is smaller or equal return b )
+    THEN
+;
 
 ( initialize allocator state. )
 : HEAP_INIT
@@ -206,6 +214,36 @@ FORGET ARR POP
 
         1 +
     DUP 11 == UNTIL POP
+;
+
+( Make an extent N pages smaller, removes the extent if N equals page_count.
+Returns the extent's new address. )
+: SPLIT_EXTENT
+    TODO" SPLIT_EXTENT should make an extent smaller, while changing its bucket if necessary.
+        And removing it alltogether if the page_count is the same as the number to split from it.
+        Finally, it should return the address of the split-off chunk."
+;
+
+( Merge an extent with adjacent ones if able, possibly changing start_page and page_count.
+Returns the extent's new address. )
+: COALESCE_AT_EXTENT
+    TODO" COALESCE_AT_EXTENT should merge a freshly-made extent (such as from pFREE) with adjacent
+          ones if necessary, and return the new start address of the extent."
+;
+
+( Create a new extent and insert into extent list preserving sorted order.
+Takes the desired start_page, and returns the new address of the extent. O(n). )
+: NEW_EXTENT
+    TODO" NEW_EXTENT should make and insert a new extent into the address-ordered extent list,
+          returning its address when done, note that it does not coalesce.
+          This is our allocator's O(n) operation because it needs to maintain sorted order during
+          insertion. It's technically possible to make this O(log n) by changing the extent list
+          used by the allocator to be a skip list, but that's out of the scope of this implementation."
+;
+
+( Find the appropriate size class and return its bucket, given an allocation size. )
+: GET_BUCKET
+    TODO" GET_BUCKET should turn an allocation size into a bucket address and then return it."
 ;
 
 ( allocate n pages )
