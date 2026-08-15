@@ -150,7 +150,7 @@ FORGET ARR POP
 ;
 
 ( Count leading zeros. )
-: __builtin_lzcnt
+: LZCNT
     [
         -13 ,b 73 ,b 15 ,b -67 ,b 70 ,b -8 ,b ( lzcnt rax, [r14 - 8] )
         73 ,b -119 ,b 70 ,b -8 ,b ( mov [r14 - 8], rax )
@@ -240,7 +240,7 @@ Returns the extent's new address. )
 ;
 
 ( Create a new extent and insert into extent list preserving sorted order.
-Takes the desired start_page, and returns the new address of the extent. O(n). )
+Takes the desired start_page and page_count, and returns the new address of the extent. O(n). )
 : NEW_EXTENT
     TODO" NEW_EXTENT should make and insert a new extent into the address-ordered extent list,
           returning its address when done, note that it does not coalesce.
@@ -251,15 +251,54 @@ Takes the desired start_page, and returns the new address of the extent. O(n). )
 
 ( Find the appropriate size class and return its bucket, given an allocation size. )
 : GET_BUCKET
-    -1 + __builtin_lzcnt 64 - 10 MIN
+    -1 + LZCNT 64 - 10 MIN
+;
+
+( Given a bucket, check if it is empty and if so loop over the buckets until a nonempty one is found.
+Returns -1 if it cannot find any nonempty buckets. )
+: GET_NONEMPTY_BUCKET
+    BEGIN
+        DUP DWORD_T BUCKETS INDEX @d IF
+            EXIT
+        THEN
+        1 +
+    DUP 11 == UNTIL
+    POP -1
+;
+
+( Allocate n pages from a given bucket by walking it and checking if each extent is large enough.
+O(n) where n = the number of extents in the final bucket. )
+: __SLOW_ALLOC
+    TODO" Allocate n pages from a bucket without a guarantee of it working
+          or finishing quickly."
+;
+
+( Allocate n pages from a given nonempty bucket in constant time. )
+: __FAST_ALLOC
+    TODO" Allocate n pages from a given nonempty bucket, O(1) and cannot error."
 ;
 
 ( allocate n pages )
 : pALLOC
-    TODO" pALLOC should allocate n pages and return the address of the first."
+    ( If allocation is large then we try a slow alloc, if it is small we try to find an appropriate bucket. )
+    DUP 1024 >= IF
+        DUP GET_BUCKET GET_NONEMPTY_BUCKET ( Try to find an appropriate bucket. )
+        
+        DUP -1 == IF
+            ( If no appropriate larger buckets, try 1 below. )
+            POP
+            DUP GET_BUCKET -1 + SWAP
+            __SLOW_ALLOC
+        ELSE
+            ( If appropriate bucket found, we can guarantee a fast allocation. )
+            __FAST_ALLOC
+        THEN
+    ELSE
+        10 __SLOW_ALLOC
+    THEN
 ;
 
 ( free n pages )
-: pFREE 
-    TODO" pFREE should take an address and count and free that many pages."
+: pFREE
+    NEW_EXTENT COALESCE_AT_EXTENT POP
 ;
