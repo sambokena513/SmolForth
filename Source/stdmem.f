@@ -267,7 +267,7 @@ Returns -1 if it cannot find any nonempty buckets. )
 ;
 
 ( Allocate n pages from a given bucket by walking it and checking if each extent is large enough.
-O(n) where n = the number of extents in the final bucket. )
+O(n) where n = the number of extents in the bucket. )
 : __SLOW_ALLOC
     TODO" Allocate n pages from a bucket without a guarantee of it working
           or finishing quickly."
@@ -287,8 +287,7 @@ O(n) where n = the number of extents in the final bucket. )
         DUP -1 == IF
             ( If no appropriate larger buckets, try 1 below. )
             POP
-            DUP GET_BUCKET -1 + SWAP
-            __SLOW_ALLOC
+            DUP GET_BUCKET -1 + __SLOW_ALLOC
         ELSE
             ( If appropriate bucket found, we can guarantee a fast allocation. )
             __FAST_ALLOC
@@ -300,5 +299,5 @@ O(n) where n = the number of extents in the final bucket. )
 
 ( free n pages )
 : pFREE
-    NEW_EXTENT COALESCE_AT_EXTENT POP
+    HEAP_BASE SWAP - 12 SWAP >> NEW_EXTENT COALESCE_AT_EXTENT POP
 ;
