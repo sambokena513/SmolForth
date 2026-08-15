@@ -847,7 +847,7 @@ db "<=", 0
 
 SIGN:
 xor rcx, rcx
-cmp [r14 - 8], 0
+cmp qword [r14 - 8], 0
 sets cl
 neg rcx
 mov [r14 - 8], rcx
@@ -861,7 +861,7 @@ db "-?", 0
 
 NOTSIGN:
 xor rcx, rcx
-cmp [r14 - 8], 0
+cmp qword [r14 - 8], 0
 setns cl
 neg rcx
 mov [r14 - 8], rcx

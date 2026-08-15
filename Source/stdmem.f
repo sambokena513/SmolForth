@@ -131,6 +131,14 @@ This allows user code to use dynamic memory or to implement more sophisticated a
 ( 1.5GB heap )
 512 1024 1024 * * CONSTANT HEAP_BASE
 
+( Some helpers to make the syntax for the extent struct a bit nicer. )
+0 CONSTANT extent.page_count
+4 CONSTANT extent.prev
+8 CONSTANT extent.next
+12 CONSTANT extent.prev_bucket
+16 CONSTANT extent.next_bucket
+CREATE FIELD ALIAS +
+
 ( 12 i32 slots so that's 48 bytes of external metadata for the allocator. )
 DWORD_T VARIABLE EXTENT_LIST
 DWORD_T 11 * VARIABLE BUCKETS
@@ -141,12 +149,21 @@ QWORD_T VARIABLE ARR
 : INDEX ARR !q * ARR @q + ;
 FORGET ARR POP
 
-( Get the smaller of two numbers, used to clamp values. )
+( Get the smaller of two values, used to clamp values. )
 : MIN
     OVER OVER < IF
         SWAP POP ( if a is smaller return a )
     ELSE
         POP ( if b is smaller or equal return b )
+    THEN
+;
+
+( Get the larger of two values. )
+: MAX
+    OVER OVER > IF
+        SWAP POP
+    ELSE
+        POP
     THEN
 ;
 
@@ -162,13 +179,13 @@ FORGET ARR POP
 : HEAP_INIT
 
     ( page_count = size of heap in pages )
-    393216 0 DWORD_T HEAP_BASE INDEX !d
+    393216 HEAP_BASE extent.page_count FIELD !d
 
     ( Because this is currently the only extent we just zero the link pointers. )
-    0 1 DWORD_T HEAP_BASE INDEX !d
-    0 2 DWORD_T HEAP_BASE INDEX !d
-    0 3 DWORD_T HEAP_BASE INDEX !d
-    0 4 DWORD_T HEAP_BASE INDEX !d
+    0 HEAP_BASE extent.prev FIELD !d
+    0 HEAP_BASE extent.next FIELD !d
+    0 HEAP_BASE extent.prev_bucket FIELD !d
+    0 HEAP_BASE extent.next_bucket FIELD !d
 
     ( Make the extent list point to our first extent. )
     HEAP_BASE EXTENT_LIST !d
@@ -185,12 +202,12 @@ FORGET ARR POP
 ( Pretty-print an extent. )
 : PRINT_EXTENT
 
-    r" -----" DUP PRINT OVER [ WNB 21 + ] LITERAL I64TS PRINT PRINTLN
-    DUP @d r" page_count " PRINT .
-    DUP 4 + @d r" prev " PRINT .
-    DUP 8 + @d r" next " PRINT .
-    DUP 12 + @d r" prev_bucket " PRINT .
-    16 + @d r" next_bucket " PRINT .
+    r" -----" DUP PRINT OVER PRINTNUM PRINTLN
+    DUP extent.page_count FIELD @d r" page_count " PRINT .
+    DUP extent.prev FIELD @d r" prev " PRINT .
+    DUP extent.next FIELD @d r" next " PRINT .
+    DUP extent.prev_bucket FIELD @d r" prev_bucket " PRINT .
+    extent.next_bucket FIELD @d r" next_bucket " PRINT .
     r" -----EXTENT-----" PRINTLN
 ;
 
@@ -215,7 +232,7 @@ FORGET ARR POP
         DUP WHILE
             r"     " PRINT
             DUP PRINTNUM
-            16 + @d 
+            extent.next_bucket FIELD @d 
         REPEAT POP
         PUTLN
 
@@ -223,8 +240,60 @@ FORGET ARR POP
     DUP 11 == UNTIL POP
 ;
 
+( Find the appropriate size class and return its bucket, given an allocation size. )
+: GET_BUCKET
+    -1 + LZCNT 64 - 10 MIN
+;
+
+( Given an extent, find which bucket it is in. Different from GET_BUCKET as this
+deals with size classes while GET_BUCKET deals with lower bounds.
+Ie. this should return 9 for a 1000-page extent, while GET_BUCKET would return 10. )
+: FIND_BUCKET
+    LZCNT 63 - 10 MIN
+;
+
+( Given a bucket, check if it is empty and if so loop over the buckets until a nonempty one is found.
+Returns -1 if it cannot find any nonempty buckets. )
+: GET_NONEMPTY_BUCKET
+    BEGIN
+        DUP DWORD_T BUCKETS INDEX @d IF
+            EXIT
+        THEN
+        1 +
+    DUP 11 == UNTIL
+    POP -1
+;
+
+( Given an extent and bucket, make the extent part of said bucket.
+Note that this should be called before actually modifying an extent's page_count,
+because it determines what bucket it is currently in based on that. )
+: CHANGE_BUCKET
+    >C
+
+    C@ extent.prev_bucket FIELD @d 0 == IF
+        ( redirect extent's bucket to point to extent.next_bucket )
+        C@ extent.next_bucket FIELD @d
+        C@ extent.page_count FIELD @d FIND_BUCKET
+        DWORD_T BUCKETS INDEX !d
+
+        ( make the extent part of the new bucket )
+        DUP DWORD_T BUCKETS INDEX @d C@ extent.next_bucket FIELD !d
+        C> SWAP DWORD_T BUCKETS INDEX !d
+    ELSE
+        ( redirect extent.prev_bucket to point to extent.next_bucket )
+        C@ extent.next_bucket FIELD @d 
+        C@ extent.prev_bucket FIELD @d
+        extent.next_bucket FIELD !d
+
+        ( make the extent part of the new bucket )
+        DUP DWORD_T BUCKETS INDEX @d C@ extent.next_bucket FIELD !d
+        0 C@ extent.prev_bucket FIELD !d
+        C> SWAP DWORD_T BUCKETS INDEX !d
+    THEN
+;
+
 ( Make an extent N pages smaller, removes the extent if N equals page_count.
-Returns the extent's new address. )
+Returns the extent's new address. Also  )
 : SPLIT_EXTENT
     TODO" SPLIT_EXTENT should make an extent smaller, while changing its bucket if necessary.
         And removing it alltogether if the page_count is the same as the number to split from it.
@@ -246,23 +315,6 @@ Takes the desired address and page_count, returns nothing. O(n). )
           to maintain sorted order during insertion. It's technically possible to make this O(log n)
           by changing the extent list used by the allocator to be a skip list, but that's out of the
           scope of this implementation."
-;
-
-( Find the appropriate size class and return its bucket, given an allocation size. )
-: GET_BUCKET
-    -1 + LZCNT 64 - 10 MIN
-;
-
-( Given a bucket, check if it is empty and if so loop over the buckets until a nonempty one is found.
-Returns -1 if it cannot find any nonempty buckets. )
-: GET_NONEMPTY_BUCKET
-    BEGIN
-        DUP DWORD_T BUCKETS INDEX @d IF
-            EXIT
-        THEN
-        1 +
-    DUP 11 == UNTIL
-    POP -1
 ;
 
 ( Allocate n pages from a given bucket by walking it and checking if each extent is large enough.

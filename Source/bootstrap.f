@@ -1898,9 +1898,8 @@ CSPTR
 C>
 CSPTR
 @w
-8
-SWAP
--
+-8
++
 CSPTR
 !w
 CSPTR
@@ -1911,9 +1910,8 @@ CSPTR
 C@
 CSPTR
 @w
-8
-SWAP
--
+-8
++
 @q
 ;
 :

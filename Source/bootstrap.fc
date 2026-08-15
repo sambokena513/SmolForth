@@ -352,10 +352,10 @@ CSTCK CSPTR !w
 : >C CSPTR @w !q CSPTR @w 8 + CSPTR !w ;
 
 // C> pops one value from the control flow stack
-: C> CSPTR @w 8 SWAP - CSPTR !w CSPTR @w @q ;
+: C> CSPTR @w -8 + CSPTR !w CSPTR @w @q ;
 
 // read the value at the top of the control flow stack without popping it
-: C@ CSPTR @w 8 SWAP - @q ;
+: C@ CSPTR @w -8 + @q ;
 
 // conditionals
 : IF 0 COMPILE 0BRANCH HERE >C ; IMMEDIATE
