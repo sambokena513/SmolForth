@@ -1800,6 +1800,16 @@ DUP
 .
 ;
 :
+TUCK
+SWAP
+OVER
+;
+:
+NIP
+SWAP
+POP
+;
+:
 >CODE
 LATEST
 4

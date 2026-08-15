@@ -299,6 +299,10 @@ COMP_START LATEST 4 + !d
 // Useful for debugging without accidentally corrupting the stack.
 : PEEK DUP . ;
 
+// stack helpers
+: TUCK SWAP OVER ;
+: NIP SWAP POP ;
+
 // Patch LATEST's code pointer, taking an address from the stack.
 : >CODE LATEST 4 + !d ;
 

@@ -4,7 +4,7 @@
 words for easier metaprogramming. )
 
 ( WORDCOUNT returns the number of entries in the current dictionary. )
-: WORDCOUNT LATEST 0 BEGIN OVER WHILE 1 + SWAP @d SWAP REPEAT SWAP POP ;
+: WORDCOUNT LATEST 0 BEGIN OVER WHILE 1 + SWAP @d SWAP REPEAT NIP ;
 
 ( WORDS prints every dictionary entry's name. )
 : WORDS 

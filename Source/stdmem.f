@@ -15,7 +15,6 @@ This allows user code to use dynamic memory or to implement more sophisticated a
             extent := Struct with the shape:
 
                 struct extent {
-                    i32 start_page;
                     i32 page_count;
 
                     struct extent *prev;
@@ -81,7 +80,9 @@ This allows user code to use dynamic memory or to implement more sophisticated a
             - Different buckets may not reference the same extents.
             - Extents may not exist in user-owned memory, they must instead be
             - at the start of the free area they describe.
-            - An extent's page_count may not be under 1, and its start_page may not be under 0.
+            - An extent's page_count may not be under 1.
+            - An extent must always exist in both the address-ordered extent list
+                and in exactly one bucket.
             - There is a finite, statically known number of buckets.
             - A bucket may not reference extents smaller than its size class.
             - Neither the extent list nor buckets may link back to themselves,
@@ -160,15 +161,14 @@ FORGET ARR POP
 ( initialize allocator state. )
 : HEAP_INIT
 
-    ( start_page = 0, page_count = size of heap in pages )
-    0 0 DWORD_T HEAP_BASE INDEX !d
-    393216 1 DWORD_T HEAP_BASE INDEX !d
+    ( page_count = size of heap in pages )
+    393216 0 DWORD_T HEAP_BASE INDEX !d
 
     ( Because this is currently the only extent we just zero the link pointers. )
+    0 1 DWORD_T HEAP_BASE INDEX !d
     0 2 DWORD_T HEAP_BASE INDEX !d
     0 3 DWORD_T HEAP_BASE INDEX !d
     0 4 DWORD_T HEAP_BASE INDEX !d
-    0 5 DWORD_T HEAP_BASE INDEX !d
 
     ( Make the extent list point to our first extent. )
     HEAP_BASE EXTENT_LIST !d
@@ -186,12 +186,11 @@ FORGET ARR POP
 : PRINT_EXTENT
 
     r" -----" DUP PRINT OVER [ WNB 21 + ] LITERAL I64TS PRINT PRINTLN
-    DUP @d r" start_page " PRINT .
-    DUP 4 + @d r" page_count " PRINT .
-    DUP 8 + @d r" prev " PRINT .
-    DUP 12 + @d r" next " PRINT .
-    DUP 16 + @d r" prev_bucket " PRINT .
-    20 + @d r" next_bucket " PRINT .
+    DUP @d r" page_count " PRINT .
+    DUP 4 + @d r" prev " PRINT .
+    DUP 8 + @d r" next " PRINT .
+    DUP 12 + @d r" prev_bucket " PRINT .
+    16 + @d r" next_bucket " PRINT .
     r" -----EXTENT-----" PRINTLN
 ;
 
@@ -201,7 +200,7 @@ FORGET ARR POP
     ( Print every extent in address order. )
     EXTENT_LIST @d BEGIN
     DUP WHILE
-        DUP PRINT_EXTENT 12 + @d
+        DUP PRINT_EXTENT 8 + @d
     REPEAT POP
 
     ( Print bucket names. )
@@ -216,7 +215,7 @@ FORGET ARR POP
         DUP WHILE
             r"     " PRINT
             DUP PRINTNUM
-            20 + @d 
+            16 + @d 
         REPEAT POP
         PUTLN
 
@@ -240,13 +239,13 @@ Returns the extent's new address. )
 ;
 
 ( Create a new extent and insert into extent list preserving sorted order.
-Takes the desired start_page and page_count, and returns the new address of the extent. O(n). )
+Takes the desired address and page_count, returns nothing. O(n). )
 : NEW_EXTENT
     TODO" NEW_EXTENT should make and insert a new extent into the address-ordered extent list,
-          returning its address when done, note that it does not coalesce.
-          This is our allocator's O(n) operation because it needs to maintain sorted order during
-          insertion. It's technically possible to make this O(log n) by changing the extent list
-          used by the allocator to be a skip list, but that's out of the scope of this implementation."
+          note that it does not coalesce. This is our allocator's O(n) operation because it needs
+          to maintain sorted order during insertion. It's technically possible to make this O(log n)
+          by changing the extent list used by the allocator to be a skip list, but that's out of the
+          scope of this implementation."
 ;
 
 ( Find the appropriate size class and return its bucket, given an allocation size. )
@@ -299,5 +298,5 @@ O(n) where n = the number of extents in the bucket. )
 
 ( free n pages )
 : pFREE
-    HEAP_BASE SWAP - 12 SWAP >> NEW_EXTENT COALESCE_AT_EXTENT POP
+    TUCK NEW_EXTENT COALESCE_AT_EXTENT POP
 ;

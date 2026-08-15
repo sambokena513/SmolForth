@@ -4,7 +4,7 @@
     WHILE
         1 + SWAP 1 + SWAP
     REPEAT
-    SWAP POP
+    NIP
 ;
 : STRCPY
     BEGIN
