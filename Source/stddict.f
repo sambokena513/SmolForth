@@ -1,4 +1,4 @@
-( Dependencies: bootstrap.f, stdstring.f )
+( Dependencies: bootstrap.f, stdstring.f, stdio.f )
 
 ( <stddict.f> :; This file implements various dictionary introspection and modification
 words for easier metaprogramming. )
@@ -11,15 +11,11 @@ words for easier metaprogramming. )
     LATEST
     BEGIN 
     DUP WHILE 
-        DUP 9 + DUP >C STRLEN >C
-
-        0 DUP DUP C> C> BASE + 1 DUP SYSCALL POP
-        0 DUP DUP 1 WHITESPACE BASE + 1 DUP SYSCALL POP
-        
+        DUP 9 +
+        PRINT 32 PUTCHAR
         @d
     REPEAT
-    POP
-    0 DUP DUP 1 NEWLINE BASE + 1 DUP SYSCALL POP
+    POP 10 PUTCHAR
 ;
 
 ( __EXISTS? is a wrapper around FIND that returns whether a word matching a string
@@ -56,6 +52,7 @@ Note that __FORGET does not free memory, it only removes a word from the search 
 this makes it simpler to use without needing to worry about parser state and pointers getting
 invalidated. )
 : ' WORD FIND ;
+CREATE ['] ALIAS ' IMMEDIATE
 
 ( WORDLEN is a simple word that gets the length of a colon definition,
 this is not valid to use on words that were created using the `CREATE word ALIAS target` phrase,

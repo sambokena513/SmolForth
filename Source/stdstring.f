@@ -40,14 +40,6 @@ CREATE )
 This description of it is later in the file than for other parts of the stdlib because once again,
 this *is* the file that implements them, and we cannot use comments until they exist. )
 
-( WHITESPACE and NEWLINE respectively are in-memory constants for the values of \
-ASCII space and ASCII newline characters, the reason for making them with VARIABLE \
-instead of just being immediate words that push 32 and 10 respectively to the stack \
-is so that they can be used in sys_write for example to implement things like println and putln.
-)
-BYTE_T VARIABLE WHITESPACE 32 WHITESPACE !b
-BYTE_T VARIABLE NEWLINE 10 NEWLINE !b
-
 ( Get one character from the terminal input buffer and advance the parsing cursor. )
 : GETCHAR
     TIB_LEN 255 & 255 == IF

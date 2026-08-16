@@ -208,7 +208,7 @@ FORGET ARR POP
     DUP extent.next FIELD @d r" next " PRINT .
     DUP extent.prev_bucket FIELD @d r" prev_bucket " PRINT .
     extent.next_bucket FIELD @d r" next_bucket " PRINT .
-    r" -----EXTENT-----" PRINTLN
+    r" ------EXTENT------" PRINTLN
 ;
 
 ( walk the heap and dump metadata, printing out the extent list and every bucket )
@@ -270,7 +270,7 @@ because it determines what bucket it is currently in based on that. )
 : CHANGE_BUCKET
     >C
 
-    C@ extent.prev_bucket FIELD @d 0 == IF
+    C@ extent.prev_bucket FIELD @d ~ IF
         ( redirect extent's bucket to point to extent.next_bucket )
         C@ extent.next_bucket FIELD @d
         C@ extent.page_count FIELD @d FIND_BUCKET
@@ -289,6 +289,16 @@ because it determines what bucket it is currently in based on that. )
         DUP DWORD_T BUCKETS INDEX @d C@ extent.next_bucket FIELD !d
         0 C@ extent.prev_bucket FIELD !d
         C> SWAP DWORD_T BUCKETS INDEX !d
+    THEN
+;
+
+( Remove an extent from the address-ordered list as well as its bucket. )
+: UNLINK_EXTENT
+    TODO" Remove an extent from the address-ordered list as well as its bucket."
+    DUP extent.prev ~ IF
+        TODO" find bucket and make it point to extent.next instead of extent"
+    ELSE
+        TODO" redirect extent.prev to extent.next"
     THEN
 ;
 
