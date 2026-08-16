@@ -1,4 +1,4 @@
-( Dependencies: bootstrap.f, stdstring.f, stdio.f, stdassert.f, stddict.f )
+( Dependencies: bootstrap.f, stdstring.f, stdio.f, stddict.f, stdassert.f )
 
 ( <stdmem.f> :; This file implements an extent-based page allocator managing a 1.5GB heap.
 This allows user code to use dynamic memory or to implement more sophisticated allocators. )
@@ -264,42 +264,75 @@ Returns -1 if it cannot find any nonempty buckets. )
     POP -1
 ;
 
+( Remove extent from its current bucket. )
+: BUCKET_UNLINK
+    DUP
+    DUP extent.prev_bucket FIELD @d IF
+        ( extent.prev_bucket.next_bucket = extent.next_bucket )
+        DUP extent.prev_bucket FIELD @d extent.next_bucket FIELD
+        SWAP extent.next_bucket FIELD @d SWAP !d
+    ELSE
+        ( bucket = extent.next_bucket )
+        DUP FIND_BUCKET DWORD_T BUCKETS INDEX SWAP
+        extent.next_bucket FIELD @d SWAP !d
+    THEN
+
+    DUP
+    DUP extent.next_bucket FIELD @d ~ IF
+        ( extent.next_bucket.prev_bucket = extent.prev_bucket )
+        DUP extent.next_bucket FIELD @d extent.prev_bucket FIELD
+        SWAP extent.prev_bucket FIELD @d SWAP !d
+    THEN
+    POP
+;
+
+( Remove extent from the address-ordered extent list. )
+: ELIST_UNLINK
+    DUP
+    DUP extent.prev FIELD @d IF
+        ( extent.prev.next = extent.next )
+        DUP extent.prev FIELD @d extent.next FIELD
+        SWAP extent.next FIELD @d SWAP !d
+    ELSE
+        ( extent_list = extent.next )
+        extent.next FIELD @d EXTENT_LIST !d
+    THEN
+
+    DUP
+    DUP extent.next FIELD @d ~ IF
+        ( extent.next.prev = extent.prev )
+        DUP extent.next FIELD @d extent.prev FIELD
+        SWAP extent.prev FIELD @d SWAP !d
+    THEN
+    POP
+;
+
+( Given an extent *which is part of no bucket*, and a bucket, make it part of said bucket. )
+: SET_BUCKET
+    OVER DWORD_T BUCKETS INDEX @d
+
+    DUP IF
+        OVER OVER SWAP 
+        extent.next_bucket FIELD !d
+        OVER SWAP extent.prev_bucket FIELD !d
+    ELSE
+        POP
+    THEN
+
+    SWAP DWORD_T BUCKETS INDEX !d
+;
+
 ( Given an extent and bucket, make the extent part of said bucket.
 Note that this should be called before actually modifying an extent's page_count,
 because it determines what bucket it is currently in based on that. )
 : CHANGE_BUCKET
-    >C
-
-    C@ extent.prev_bucket FIELD @d ~ IF
-        ( redirect extent's bucket to point to extent.next_bucket )
-        C@ extent.next_bucket FIELD @d
-        C@ extent.page_count FIELD @d FIND_BUCKET
-        DWORD_T BUCKETS INDEX !d
-
-        ( make the extent part of the new bucket )
-        DUP DWORD_T BUCKETS INDEX @d C@ extent.next_bucket FIELD !d
-        C> SWAP DWORD_T BUCKETS INDEX !d
-    ELSE
-        ( redirect extent.prev_bucket to point to extent.next_bucket )
-        C@ extent.next_bucket FIELD @d 
-        C@ extent.prev_bucket FIELD @d
-        extent.next_bucket FIELD !d
-
-        ( make the extent part of the new bucket )
-        DUP DWORD_T BUCKETS INDEX @d C@ extent.next_bucket FIELD !d
-        0 C@ extent.prev_bucket FIELD !d
-        C> SWAP DWORD_T BUCKETS INDEX !d
-    THEN
+    DUP BUCKET_UNLINK SET_BUCKET
 ;
 
 ( Remove an extent from the address-ordered list as well as its bucket. )
 : UNLINK_EXTENT
-    TODO" Remove an extent from the address-ordered list as well as its bucket."
-    DUP extent.prev ~ IF
-        TODO" find bucket and make it point to extent.next instead of extent"
-    ELSE
-        TODO" redirect extent.prev to extent.next"
-    THEN
+    DUP BUCKET_UNLINK
+    ELIST_UNLINK
 ;
 
 ( Make an extent N pages smaller, removes the extent if N equals page_count.
