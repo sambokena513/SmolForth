@@ -497,6 +497,12 @@ BYTE_T VARIABLE SNAPSHOT_TLEN
     SNAPSHOT_TLEN @b aTIB_LEN !b
 ;
 
+// Set a word to run every time the image is loaded, note that this does not immediately \
+// run the word, but rather compiles it into the image start, meaning unless you SNAPSHOT \
+// the image, and rerun the new binary, you will not see the new behaviour. Unless changed by SET_INIT, \
+// the init command is INTERPRET.
+: SET_INIT HERE 20 aHERE !d COMPILE COMPILE aHERE !d ;
+
 // There are still many features this file does not implement, but we end it here \
 // because all we really need is a way to save the image, as well as the core language.
 // The rest of the stdlib as well as language features will be in other files.
