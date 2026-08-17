@@ -245,7 +245,7 @@ FORGET ARR POP
     -1 + LZCNT 64 - 10 MIN
 ;
 
-( Given an extent, find which bucket it is in. Different from GET_BUCKET as this
+( Given an extent's page_count, find which bucket it is in. Different from GET_BUCKET as this
 deals with size classes while GET_BUCKET deals with lower bounds.
 Ie. this should return 9 for a 1000-page extent, while GET_BUCKET would return 10. )
 : FIND_BUCKET
@@ -273,7 +273,7 @@ Returns -1 if it cannot find any nonempty buckets. )
         SWAP extent.next_bucket FIELD @d SWAP !d
     ELSE
         ( bucket = extent.next_bucket )
-        DUP FIND_BUCKET DWORD_T BUCKETS INDEX SWAP
+        DUP @d FIND_BUCKET DWORD_T BUCKETS INDEX SWAP
         extent.next_bucket FIELD @d SWAP !d
     THEN
 
@@ -336,11 +336,28 @@ because it determines what bucket it is currently in based on that. )
 ;
 
 ( Make an extent N pages smaller, removes the extent if N equals page_count.
-Returns the extent's new address. Also  )
+Returns the extent's new address. Also changes buckets if necessary.  )
 : SPLIT_EXTENT
-    TODO" SPLIT_EXTENT should make an extent smaller, while changing its bucket if necessary.
-        And removing it alltogether if the page_count is the same as the number to split from it.
-        Finally, it should return the address of the split-off chunk."
+    ( calculate the extent's new page count, put it under the extent's address,
+    and also make NOS be the extent's current bucket and TOS the predicted new bucket )
+    TUCK @d - TUCK OVER @d FIND_BUCKET SWAP FIND_BUCKET
+
+    == IF
+        ( if the extent did not change buckets we can just set the
+        new page count here and make sure to keep the extent on the top of the stack )
+        TUCK !d 
+    ELSE
+        SWAP DUP 0 == IF
+            ( if the new page count is 0 we don't bother with any complexities and instead
+            just remove the extent and return its address )
+            POP DUP UNLINK_EXTENT EXIT
+        THEN
+
+        . .
+        TODO" change buckets and modify page_count"
+    THEN
+
+    TODO" calculate address and return it"
 ;
 
 ( Merge an extent with adjacent ones if able, possibly changing start_page and page_count.
