@@ -922,6 +922,42 @@ db 0
 db "OVER", 0
 
 
+ROT:
+; c b a
+mov rax, [r14 - 8] ; a
+mov rbx, [r14 - 16] ; b
+mov rdx, [r14 - 24] ; c
+
+; b a c
+mov [r14 - 8], rdx ; a -> c
+mov [r14 - 16], rax ; b -> a
+mov [r14 - 24], rbx ; c -> b
+ret
+ROT_entry:
+dd OVER_entry
+dd ROT
+db 0
+db "ROT", 0
+
+
+mROT:
+; c b a
+mov rax, [r14 - 8] ; a
+mov rbx, [r14 - 16] ; b
+mov rdx, [r14 - 24] ; c
+
+; a c b
+mov [r14 - 8], rbx ; a -> b
+mov [r14 - 16], rdx ; b -> c
+mov [r14 - 24], rax ; c -> a
+ret
+mROT_entry:
+dd ROT_entry
+dd mROT
+db 0
+db "-ROT", 0
+
+
 ; Basic syscall wrapper, takes 6 args and pushes the return value
 SYSCALL_:
 dPOP rax
@@ -935,7 +971,7 @@ syscall
 dPUSH rax
 ret
 SYSCALL__entry:
-dd OVER_entry
+dd mROT_entry
 dd SYSCALL_
 db 0
 db "SYSCALL", 0

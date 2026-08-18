@@ -299,10 +299,6 @@ COMP_START LATEST 4 + !d
 // Useful for debugging without accidentally corrupting the stack.
 : PEEK DUP . ;
 
-// stack helpers
-: TUCK SWAP OVER ;
-: NIP SWAP POP ;
-
 // Patch LATEST's code pointer, taking an address from the stack.
 : >CODE LATEST 4 + !d ;
 
@@ -356,6 +352,13 @@ CSTCK CSPTR !w
 
 // read the value at the top of the control flow stack without popping it
 : C@ CSPTR @w -8 + @q ;
+
+// stack helpers
+: TUCK SWAP OVER ;
+: NIP SWAP POP ;
+: 2POP POP POP ;
+: 2DUP OVER OVER ;
+: 2SWAP ROT >C ROT C> ;
 
 // conditionals
 : IF 0 COMPILE 0BRANCH HERE >C ; IMMEDIATE
