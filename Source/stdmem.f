@@ -352,12 +352,12 @@ Returns the extent's new address. Also changes buckets if necessary.  )
             just remove the extent and return its address )
             POP DUP UNLINK_EXTENT EXIT
         THEN
-
-        . .
-        TODO" change buckets and modify page_count"
+        ( change buckets and set new page_count, make sure to keep the extent on the stack at the end )
+        OVER SWAP TUCK FIND_BUCKET OVER CHANGE_BUCKET !d
     THEN
 
-    TODO" calculate address and return it"
+    ( return the address of the split-off chunk, this is extent+page_count*page_size )
+    DUP @d 12 SWAP << +
 ;
 
 ( Merge an extent with adjacent ones if able, possibly changing start_page and page_count.
