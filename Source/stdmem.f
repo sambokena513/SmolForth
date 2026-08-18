@@ -382,12 +382,18 @@ O(n) where n = the number of extents in the bucket. )
 : __SLOW_ALLOC
     DWORD_T BUCKETS INDEX @d
 
-    ( do a loop over the bucket here )
+    ( loop over the bucket, if we reach the end of the bucket, return -1 )
+    BEGIN
+    DUP WHILE
+        ( if we find a large enough extent, split it and break out of the loop )
+        2DUP @d >= IF
+            SPLIT_EXTENT EXIT
+        THEN
 
-    ( if loop finishes without an early exit due to finding an extent with a large enough size, return -1 )
-
-    TODO" Allocate n pages from a bucket without a guarantee of it working
-          or finishing quickly."
+        extent.next_bucket FIELD @d
+    REPEAT
+    2POP
+    -1
 ;
 
 ( Allocate n pages from a given nonempty bucket in constant time, cannot error. )
