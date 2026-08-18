@@ -151,8 +151,8 @@ FORGET ARR POP
 
 ( Get the smaller of two values, used to clamp values. )
 : MIN
-    OVER OVER < IF
-        SWAP POP ( if a is smaller return a )
+    2DUP < IF
+        NIP ( if a is smaller return a )
     ELSE
         POP ( if b is smaller or equal return b )
     THEN
@@ -160,8 +160,8 @@ FORGET ARR POP
 
 ( Get the larger of two values. )
 : MAX
-    OVER OVER > IF
-        SWAP POP
+    2DUP > IF
+        NIP
     ELSE
         POP
     THEN
@@ -312,7 +312,7 @@ Returns -1 if it cannot find any nonempty buckets. )
     OVER DWORD_T BUCKETS INDEX @d
 
     DUP IF
-        OVER OVER SWAP 
+        2DUP SWAP 
         extent.next_bucket FIELD !d
         OVER SWAP extent.prev_bucket FIELD !d
     ELSE
@@ -407,7 +407,7 @@ O(n) where n = the number of extents in the bucket. )
             DUP GET_BUCKET DUP IF
                 -1 + __SLOW_ALLOC
             ELSE
-                POP POP -1 ( if no buckets at all, the allocation failed )
+                2POP -1 ( if no buckets at all, the allocation failed )
             THEN 
         ELSE
             ( If appropriate bucket found, we can guarantee a fast allocation. )

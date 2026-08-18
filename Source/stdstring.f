@@ -9,7 +9,7 @@
 : STRCPY
     BEGIN
     DUP @b WHILE
-        OVER OVER @b SWAP !b
+        2DUP @b SWAP !b
         1 + SWAP 1 + SWAP
     REPEAT
     POP
@@ -18,12 +18,11 @@
 : STRCMP
     BEGIN
     DUP @b WHILE
-        OVER OVER @b SWAP @b <>
-        IF POP POP 0 EXIT THEN
+        2DUP @b SWAP @b <>
+        IF 2POP 0 EXIT THEN
         1 + SWAP 1 + SWAP
     REPEAT
-    POP
-    POP
+    2POP
     -1
 ;
 CREATE ) 

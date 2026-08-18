@@ -451,7 +451,7 @@ CREATE WHILE ALIAS IF IMMEDIATE
         BEGIN
 
         DUP WHILE // if no more bytes to write, finish
-            OVER OVER SWAP >C >C
+            2DUP SWAP >C >C
 
             0 DUP DUP // unused syscall args
 
@@ -462,7 +462,7 @@ CREATE WHILE ALIAS IF IMMEDIATE
 
             DUP -? IF
                 // early return with the value from sys_write
-                >C POP POP C> EXIT
+                >C 2POP C> EXIT
             ELSE
                 SWAP -
             THEN
