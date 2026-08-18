@@ -1,4 +1,4 @@
-( Dependencies: bootstrap.f, stdstring.f, stdio.f )
+( Dependencies: bootstrap.f, stdstring.f, stdio.f, stddict.f )
 
 ( <stdassert.f> :; Basic handling for fatal or near-fatal errors. )
 
@@ -27,14 +27,21 @@ so we don't want to rely on a specific execution context. )
 DWORD_T VARIABLE dSP_BASE 8 @d dSP_BASE !d
 DWORD_T VARIABLE rSP_BASE 12 @d rSP_BASE !d
 
-( Print a backtrace with image relative addresses, note that this does not search
-for a word matching the address, it just prints the address directly.
-Also, unless you've done something really weird with rsp then it should
-also print its own address each time. )
-: BACKTRACE 
+( Walk the call stack printing return addresses in the format "<addr> in <word>".
+Note that because this is just another word and not an external debugger, this means it will also print it's own address, and where you called it from. )
+: BACKTRACE
     rSP@ BASE SWAP -
     BEGIN DUP 
     rSP_BASE @d > WHILE
-            DUP @q BASE SWAP - . 8 +
+            DUP @q BASE SWAP -
+            DUP PRINTNUM r"  in " PRINT
+
+            WHATIS DUP -1 == IF
+                POP r" ???" PRINTLN
+            ELSE
+                9 + PRINTLN
+            THEN
+
+            8 +
     REPEAT POP
 ;

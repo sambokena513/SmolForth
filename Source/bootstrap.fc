@@ -154,8 +154,8 @@ $DEFINITION_START
 HERE // push here so we can patch latest_def later
 
 aINTERPS @d ,d // link
-26 ,d // code
-0 ,b // flags
+26 ,d // code, placeholder pointer to GREET
+16 ,b // flags, 16 is ALIAS because currently the word has no unique body
 
 SWAP // put string pointer on top of stack
 
@@ -196,7 +196,7 @@ HERE aINTERPS 10 + !d
     ]
         aINTERPS 10 +
     [
--61 ,b CREATE aCOMP_START
+-61 ,b CREATE aCOMP_START 0 aINTERPS @d 8 + !b
 aINTERPS 10 + @d aINTERPS @d 4 + !d
 
 
@@ -204,7 +204,7 @@ HERE aCOMP_START !d
     ]
         aCOMP_START @d
     [
--61 ,b CREATE COMP_START
+-61 ,b CREATE COMP_START 0 aINTERPS @d 8 + !b
 aCOMP_START @d aINTERPS @d 4 + !d
 
 
@@ -212,7 +212,7 @@ HERE aCOMP_START !d
     ]
         aINTERPS @d
     [
--61 ,b CREATE LATEST
+-61 ,b CREATE LATEST 0 aINTERPS @d 8 + !b
 COMP_START aINTERPS @d 4 + !d
 
 
@@ -220,7 +220,7 @@ HERE aCOMP_START !d
     ]
         LATEST 8 + @b 1 | LATEST 8 + !b
     [
--61 ,b CREATE IMMEDIATE
+-61 ,b CREATE IMMEDIATE 0 LATEST 8 + !b
 COMP_START LATEST 4 + !d
 
 
@@ -229,7 +229,7 @@ HERE aCOMP_START !d
     ]
         WORD FIND ECR32
     [
--61 ,b CREATE COMPILE
+-61 ,b CREATE COMPILE 0 LATEST 8 + !b
 COMP_START LATEST 4 + !d IMMEDIATE
 
 
@@ -240,7 +240,7 @@ HERE aCOMP_START !d
     ]
         [ HERE 18 + ] LITERAL [ -61 ,b ] [ 255 ALLOT ]
     [
-CREATE WNB
+CREATE WNB 0 LATEST 8 + !b
 COMP_START LATEST 4 + !d
 
 
@@ -269,7 +269,7 @@ HERE aCOMP_START !d
         SWAP POP // remove strptr
         WNB + 0 SWAP !b // NUL-terminate string 
     [
--61 ,b CREATE WNB_WRITE
+-61 ,b CREATE WNB_WRITE 0 LATEST 8 + !b
 COMP_START LATEST 4 + !d
 
 
@@ -278,12 +278,18 @@ HERE aCOMP_START !d
     ]
         WORD WNB_WRITE HERE aCOMP_START !d ]
     [
--61 ,b CREATE :
+-61 ,b CREATE : 0 LATEST 8 + !b
 COMP_START LATEST 4 + !d
 
 // semicolon finishes a definition by compiling a `ret` and patching the code pointer as well as flag byte of the new word
 // semicolon needs to be immediate since otherwise it wouldn't exit compilation
-: ; COMPILE [ -61 ,b WNB MKENTR COMP_START LATEST 4 + !d [ -61 ,b WNB MKENTR COMP_START LATEST 4 + !d IMMEDIATE
+: ;
+    COMPILE [ -61 ,b
+    WNB MKENTR COMP_START LATEST 4 + !d
+    0 LATEST 8 + !b
+[
+-61 ,b WNB MKENTR 0 LATEST 8 + !b
+COMP_START LATEST 4 + !d IMMEDIATE
 
 // With these words we round out the set of words for manipulating interpreter state.
 : aSTATE aINTERPS 8 + ;
@@ -301,6 +307,14 @@ COMP_START LATEST 4 + !d
 
 // Patch LATEST's code pointer, taking an address from the stack.
 : >CODE LATEST 4 + !d ;
+
+// Unset LATEST's ALIAS flag if it is set.
+: UNIQUE
+    LATEST 8 + @b 16 &
+    [ 0 0BRANCH HERE ]
+        LATEST 8 + @b 16 ^ LATEST 8 + !b
+    [ DUP HERE - SWAP -4 + !d ]
+;
 
 // Text wrapper for >CODE, gets the code pointer from the next token.
 : ALIAS WORD FIND 4 + @d >CODE ;
@@ -331,8 +345,8 @@ COMP_START LATEST 4 + !d
     [ CLEAR WORD __CONSTANT FIND ] LITERAL ECR32
     -61 ,b ALLOT
 
-    // make the new variable immediate so __CONSTANT works properly
-    CREATE IMMEDIATE 
+    // make the new variable immediate so __CONSTANT works properly.
+    CREATE UNIQUE IMMEDIATE
 
     // patch the new word's code pointer
     COMP_START >CODE
@@ -390,7 +404,7 @@ CREATE WHILE ALIAS IF IMMEDIATE
     COMPILE LITERAL
     [ CLEAR WORD __CONSTANT FIND ] LITERAL ECR32
     COMPILE ;
-    IMMEDIATE
+    UNIQUE IMMEDIATE
 ;
 
 // Integer constants for testing numeric parsers or making sure over/underflow works for different words.

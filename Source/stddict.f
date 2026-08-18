@@ -22,6 +22,9 @@ words for easier metaprogramming. )
 given to it is in the dictionary. )
 : __EXISTS? FIND -1 == ~ ;
 
+( __UNIQUE? takes a dictionary entry address, returns whether it is an alias of something else, or has a unique code body. )
+: __UNIQUE? 8 + @b DUP 16 | == ~ ;
+
 ( __FORGET takes a string pointer representing a word name
 and modifies the dictionary such that the word preceding it links
 to the word after the target instead.
@@ -44,9 +47,26 @@ Note that __FORGET does not free memory, it only removes a word from the search 
     THEN
 ;
 
-( REPL versions of __EXISTS? and __FORGET )
+( addr entr -- true | false :; Predicate, checks if a given address is part of
+the given entry's code, note that this will not work properly on aliases. )
+: INENTR 2DUP > IF 4 + @d <= ELSE 0 THEN ;
+
+( addr -- entr | -1 :; Look up what word an address is part of,
+returns -1 if the address is part of no word, otherwise returns the entry. )
+: WHATIS
+    LATEST BEGIN
+    DUP WHILE
+        2DUP INENTR OVER __UNIQUE? & IF
+            NIP EXIT
+        THEN
+    @d REPEAT
+    2POP -1
+;
+
+( REPL versions of the respective underscore words. )
 : EXISTS? WORD __EXISTS? ;
 : FORGET WORD __FORGET ;
+: UNIQUE? WORD FIND __UNIQUE? ;
 
 ( ' is an alternative to the usual `CLEAR WORD word FIND` phrase that behaves atomically,
 this makes it simpler to use without needing to worry about parser state and pointers getting
