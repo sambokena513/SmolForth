@@ -380,6 +380,12 @@ Takes the desired address and page_count, returns nothing. O(n). )
 ( Allocate n pages from a given bucket by walking it and checking if each extent is large enough.
 O(n) where n = the number of extents in the bucket. )
 : __SLOW_ALLOC
+    DWORD_T BUCKETS INDEX @d
+
+    ( do a loop over the bucket here )
+
+    ( if loop finishes without an early exit due to finding an extent with a large enough size, return -1 )
+
     TODO" Allocate n pages from a bucket without a guarantee of it working
           or finishing quickly."
 ;
@@ -392,13 +398,17 @@ O(n) where n = the number of extents in the bucket. )
 ( allocate n pages )
 : pALLOC
     ( If allocation is large then we try a slow alloc, if it is small we try to find an appropriate bucket. )
-    DUP 1024 >= IF
+    DUP 1024 > IF
         DUP GET_BUCKET GET_NONEMPTY_BUCKET ( Try to find an appropriate bucket. )
         
         DUP -1 == IF
-            ( If no appropriate larger buckets, try 1 below. )
             POP
-            DUP GET_BUCKET -1 + __SLOW_ALLOC
+            ( If no appropriate larger buckets, try 1 below. )
+            DUP GET_BUCKET DUP IF
+                -1 + __SLOW_ALLOC
+            ELSE
+                POP POP -1 ( if no buckets at all, the allocation failed )
+            THEN 
         ELSE
             ( If appropriate bucket found, we can guarantee a fast allocation. )
             __FAST_ALLOC
