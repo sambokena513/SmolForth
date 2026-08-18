@@ -384,9 +384,9 @@ O(n) where n = the number of extents in the bucket. )
           or finishing quickly."
 ;
 
-( Allocate n pages from a given nonempty bucket in constant time. )
+( Allocate n pages from a given nonempty bucket in constant time, cannot error. )
 : __FAST_ALLOC
-    TODO" Allocate n pages from a given nonempty bucket, O(1) and cannot error."
+    DWORD_T BUCKETS INDEX @d SPLIT_EXTENT
 ;
 
 ( allocate n pages )
