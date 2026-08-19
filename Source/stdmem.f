@@ -375,6 +375,19 @@ Takes the desired address and page_count, returns nothing. O[n]. )
           to maintain sorted order during insertion. It's technically possible to make this O(log n)
           by changing the extent list used by the allocator to be a skip list, but that's out of the
           scope of this implementation."
+
+    EXTENT_LIST @d
+
+    DUP IF
+        ( loop until we hit an extent with an address higher than the target )
+        BEGIN 
+            TODO" check if we've hit the tail, if so link the new extent into the tail, else advance" 
+        2DUP > UNTIL
+
+        TODO" link the new extent into the list in the middle"
+    ELSE
+        TODO" link the new extent into the list at the head"
+    THEN
 ;
 
 ( Allocate n pages from a given bucket by walking it and checking if each extent is large enough.
