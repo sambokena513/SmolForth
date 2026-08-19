@@ -367,6 +367,10 @@ Returns the extent's new address. )
           ones if necessary, and return the new start address of the extent."
 ;
 
+( pivot extnt -- true | false :; If a given extent is not the tail of the extent list,
+and the next extent has a lower address than the pivot, return true. )
+: __NT&L? extent.next FIELD @d DUP IF < ELSE 2POP FALSE THEN ;
+
 ( Create a new extent and insert into extent list preserving sorted order.
 Takes the desired address and page_count, returns nothing. O[n]. )
 : NEW_EXTENT
@@ -376,18 +380,25 @@ Takes the desired address and page_count, returns nothing. O[n]. )
           by changing the extent list used by the allocator to be a skip list, but that's out of the
           scope of this implementation."
 
-    EXTENT_LIST @d
+    TUCK !d EXTENT_LIST @d
 
-    DUP IF
-        ( loop until we hit an extent with an address higher than the target )
-        BEGIN 
-            TODO" check if we've hit the tail, if so link the new extent into the tail, else advance" 
-        2DUP > UNTIL
-
-        TODO" link the new extent into the list in the middle"
-    ELSE
-        TODO" link the new extent into the list at the head"
+    DUP 0 == IF
+        TODO" replace the head with the next extent"
+        EXIT
     THEN
+
+    DUP extent.next FIELD @d 0 == IF
+        TODO" link the next extent into the list at the head"
+        EXIT
+    THEN
+
+    BEGIN ( loop until we hit an extent with an address higher than the target or the tail ) 
+        2DUP __NT&L?
+    WHILE
+        extent.next FIELD @d 
+    REPEAT
+
+    TODO" link the new extent into the list in the middle"
 ;
 
 ( Allocate n pages from a given bucket by walking it and checking if each extent is large enough.
