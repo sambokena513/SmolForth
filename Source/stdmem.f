@@ -55,7 +55,7 @@ This allows user code to use dynamic memory or to implement more sophisticated a
         Allocation:
 
             Select the smallest size class that is guaranteed to satisfy the allocation,
-            and pop one extent from the corresponding bucket (if empty just use a bigger bucket),
+            and pop one extent from the corresponding bucket [if empty just use a bigger bucket],
             then if allocation is equal to extent size just remove the extent
             and return the page address, else split off a chunk of the extent
             and return the address of the removed part, while moving it to a
@@ -64,7 +64,7 @@ This allows user code to use dynamic memory or to implement more sophisticated a
         Freeing:
 
             Make new extent and insert it into the extent_list while preserving order.
-            (this is why free is O(n)) Merge with adjacent extents if addresses match,
+            [this is why free is O[n]] Merge with adjacent extents if addresses match,
             then insert into the appropriate bucket.
 
         Failure Mode:
@@ -101,10 +101,10 @@ This allows user code to use dynamic memory or to implement more sophisticated a
 
         Asymptotics:
 
-            Allocate - O(1) if the allocation fits into a specialized size class,
-                O(n) where n = extent_count if the allocation hits the final bucket.
+            Allocate - O[1] if the allocation fits into a specialized size class,
+                O[n] where n = extent_count if the allocation hits the final bucket.
 
-            Free - O(n) where n = extent_count
+            Free - O[n] where n = extent_count
 
         Rationale:
 
@@ -117,7 +117,7 @@ This allows user code to use dynamic memory or to implement more sophisticated a
             allocations in hot loops yet wait until a safe point to free memory.
 
             Alongside that performance concern it's important to remember that this
-            is a basic low level page allocator, when a user is free to call a malloc()
+            is a basic low level page allocator, when a user is free to call a malloc
             implementation that handles freeing more efficiently, or simply use a slab allocator,
             it becomes less important to deal with fine-grained allocations or quick freeing because
             fundamentally the use case becomes reserving memory for other systems, not allocating
@@ -125,7 +125,7 @@ This allows user code to use dynamic memory or to implement more sophisticated a
 
             To that end we make the smallest allocation unit be the page, which is defined as 4KB here,
             and use size classes as an index over the free list to make allocations from 1 to 1024 pages
-            be O(1).
+            be O[1].
 )
 
 ( 1.5GB heap )
@@ -278,7 +278,7 @@ Returns -1 if it cannot find any nonempty buckets. )
     THEN
 
     DUP
-    DUP extent.next_bucket FIELD @d ~ IF
+    DUP extent.next_bucket FIELD @d IF
         ( extent.next_bucket.prev_bucket = extent.prev_bucket )
         DUP extent.next_bucket FIELD @d extent.prev_bucket FIELD
         SWAP extent.prev_bucket FIELD @d SWAP !d
@@ -299,7 +299,7 @@ Returns -1 if it cannot find any nonempty buckets. )
     THEN
 
     DUP
-    DUP extent.next FIELD @d ~ IF
+    DUP extent.next FIELD @d IF
         ( extent.next.prev = extent.prev )
         DUP extent.next FIELD @d extent.prev FIELD
         SWAP extent.prev FIELD @d SWAP !d
@@ -368,7 +368,7 @@ Returns the extent's new address. )
 ;
 
 ( Create a new extent and insert into extent list preserving sorted order.
-Takes the desired address and page_count, returns nothing. O(n). )
+Takes the desired address and page_count, returns nothing. O[n]. )
 : NEW_EXTENT
     TODO" NEW_EXTENT should make and insert a new extent into the address-ordered extent list,
           note that it does not coalesce. This is our allocator's O(n) operation because it needs
@@ -378,7 +378,7 @@ Takes the desired address and page_count, returns nothing. O(n). )
 ;
 
 ( Allocate n pages from a given bucket by walking it and checking if each extent is large enough.
-O(n) where n = the number of extents in the bucket. )
+O[n] where n = the number of extents in the bucket. )
 : __SLOW_ALLOC
     DWORD_T BUCKETS INDEX @d
 
