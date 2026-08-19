@@ -232,7 +232,7 @@ FORGET ARR POP
         DUP WHILE
             r"     " PRINT
             DUP PRINTNUM
-            extent.next_bucket FIELD @d 
+            extent.next_bucket FIELD @d
         REPEAT POP
         PUTLN
 
@@ -312,7 +312,7 @@ Returns -1 if it cannot find any nonempty buckets. )
     OVER DWORD_T BUCKETS INDEX @d
 
     DUP IF
-        2DUP SWAP 
+        2DUP SWAP
         extent.next_bucket FIELD !d
         OVER SWAP extent.prev_bucket FIELD !d
     ELSE
@@ -345,7 +345,7 @@ Returns the extent's new address. Also changes buckets if necessary.  )
     == IF
         ( if the extent did not change buckets we can just set the
         new page count here and make sure to keep the extent on the top of the stack )
-        TUCK !d 
+        TUCK !d
     ELSE
         SWAP DUP 0 == IF
             ( if the new page count is 0 we don't bother with any complexities and instead
@@ -392,10 +392,10 @@ Takes the desired address and page_count, returns nothing. O[n]. )
         EXIT
     THEN
 
-    BEGIN ( loop until we hit an extent with an address higher than the target or the tail ) 
+    BEGIN ( loop until we hit an extent with an address higher than the target or the tail )
         2DUP __NT&L?
     WHILE
-        extent.next FIELD @d 
+        extent.next FIELD @d
     REPEAT
 
     TODO" link the new extent into the list in the middle"
@@ -430,7 +430,7 @@ O[n] where n = the number of extents in the bucket. )
     ( If allocation is large then we try a slow alloc, if it is small we try to find an appropriate bucket. )
     DUP 1024 > IF
         DUP GET_BUCKET GET_NONEMPTY_BUCKET ( Try to find an appropriate bucket. )
-        
+
         DUP -1 == IF
             POP
             ( If no appropriate larger buckets, try 1 below. )
@@ -438,7 +438,7 @@ O[n] where n = the number of extents in the bucket. )
                 -1 + __SLOW_ALLOC
             ELSE
                 2POP -1 ( if no buckets at all, the allocation failed )
-            THEN 
+            THEN
         ELSE
             ( If appropriate bucket found, we can guarantee a fast allocation. )
             __FAST_ALLOC

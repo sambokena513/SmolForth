@@ -63,6 +63,87 @@ returns -1 if the address is part of no word, otherwise returns the entry. )
     2POP -1
 ;
 
+( Helper words for DIS, each takes an instruction address and returns a boolean. )
+: __LIT? @b 72 == ;
+: __0BR? @b 73 == ;
+: __RET? @b -61 == ;
+: __BRH? @b -23 == ;
+: __CAL? @b -24 == ;
+
+( Helper words for DIS, each takes an instruction address and returns the address of the dynamic part of the instruction. )
+: __LITva 2 + ;
+: __0BRva 10 + ;
+: __RETva 0 + ;
+: __BRHva 1 + ;
+CREATE __CALva ALIAS __BRHva ( both instructions have the same offset )
+
+( Helper words for DIS, each takes an instruction address and returns the address just after the instruction. )
+: __LIT+ 17 + ;
+: __0BR+ 14 + ;
+: __RET+ 1 + ;
+: __BRH+ 5 + ;
+CREATE __CAL+ ALIAS __BRH+ ( both instructions are the same length )
+
+( addr1 -- addr2 :; Dissassemble one instruction, helper used by DIS though you can call it directly. )
+: __DIS_INSTR
+    DUP DUP
+
+    DUP __LIT? IF
+        PRINTNUM r"   <LIT>  " PRINT __LITva @q .
+        __LIT+ EXIT
+    THEN
+
+    DUP __0BR? IF
+        PRINTNUM r"   <0BR>  " PRINT __0BRva @d .
+        __0BR+ EXIT
+    THEN
+
+    DUP __BRH? IF
+        PRINTNUM r"   <BRH>  " PRINT __BRHva @d .
+        __BRH+ EXIT
+    THEN
+
+    DUP __RET? IF
+        PRINTNUM r"   <RET>  " PRINT __RETva @b .
+        __RET+ EXIT
+    THEN
+
+    DUP __CAL? IF
+        PRINTNUM r"   <CAL>  " PRINT
+        DUP __CAL+ SWAP __CALva @d +
+
+        WHATIS DUP -1 <> IF
+            9 + PRINTLN
+        ELSE
+            POP r" <N/A>" PRINTLN
+        THEN
+
+        __CAL+ EXIT
+    THEN
+
+    PRINTNUM r"  <N/A>  " PRINT @b . 1 + 
+;
+
+( end start -- :; Disassemble instructions from <start> to <end>, note that DIS is a Forth disassembler, not a general x64 one.
+It recognizes only word calls, literals, 0BRANCH, and BRANCH, and it recognizes them by a simple heuristic of checking the first byte.
+As such, it may behave strangely on embedded string literals depending on the values, as well as if run on a word that is not a regular colon definition. )
+: DIS
+    BEGIN
+    2DUP < WHILE
+        __DIS_INSTR
+    REPEAT 2POP
+;
+
+( -- :; SEE parses a word from the input source and calls DIS with the start address as the start of that word,
+and the end address as the end of said word. )
+: SEE
+    WORD FIND DUP -1 == IF
+        POP r" No such word." PRINTLN EXIT
+    THEN
+
+    DUP 4 + @d DIS
+;
+
 ( REPL versions of the respective underscore words. )
 : EXISTS? WORD __EXISTS? ;
 : FORGET WORD __FORGET ;
