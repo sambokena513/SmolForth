@@ -362,7 +362,7 @@ Takes the desired address and page_count, returns nothing. O[n]. )
         EXIT
     THEN
 
-    DUP extent.next FIELD @d 0 == IF
+    2DUP > IF
         TODO" link the new extent into the list at the head"
         EXIT
     THEN
@@ -373,7 +373,14 @@ Takes the desired address and page_count, returns nothing. O[n]. )
         extent.next FIELD @d
     REPEAT
 
-    TODO" link the new extent into the list in the middle"
+    ( link into middle )
+    2DUP extent.next FIELD @d SWAP extent.next FIELD !d
+    DUP extent.next FIELD @d IF ( curr.next != NULL )
+        2DUP extent.next FIELD @d extent.prev FIELD !d
+    THEN
+    2DUP extent.next FIELD !d
+    OVER extent.prev FIELD !d
+    DUP @d FIND_BUCKET SWAP SET_BUCKET
 ;
 
 ( initialize allocator state. )
@@ -383,7 +390,7 @@ Takes the desired address and page_count, returns nothing. O[n]. )
     0 BEGIN
         0 OVER DWORD_T BUCKETS INDEX !d
         1 +
-    DUP 11 == UNTIL
+    DUP 11 == UNTIL POP
 
     ( zero the extent list )
     0 EXTENT_LIST !d
