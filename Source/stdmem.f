@@ -175,30 +175,6 @@ FORGET ARR POP
     ]
 ;
 
-( initialize allocator state. )
-: HEAP_INIT
-
-    ( page_count = size of heap in pages )
-    393216 HEAP_BASE extent.page_count FIELD !d
-
-    ( Because this is currently the only extent we just zero the link pointers. )
-    0 HEAP_BASE extent.prev FIELD !d
-    0 HEAP_BASE extent.next FIELD !d
-    0 HEAP_BASE extent.prev_bucket FIELD !d
-    0 HEAP_BASE extent.next_bucket FIELD !d
-
-    ( Make the extent list point to our first extent. )
-    HEAP_BASE EXTENT_LIST !d
-
-    ( Set every bucket pointer but the last one to 0 )
-    0 BEGIN
-        0 OVER DWORD_T BUCKETS INDEX !d
-        1 +
-    DUP 10 == UNTIL
-    ( And then set the 1024+ bucket to point to our one extent. )
-    HEAP_BASE SWAP DWORD_T BUCKETS INDEX !d
-;
-
 ( Pretty-print an extent. )
 : PRINT_EXTENT
 
@@ -372,12 +348,6 @@ and the next extent has a lower address than the pivot, return true. )
 ( Create a new extent and insert into extent list preserving sorted order.
 Takes the desired address and page_count, returns nothing. O[n]. )
 : NEW_EXTENT
-    TODO" NEW_EXTENT should make and insert a new extent into the address-ordered extent list,
-          note that it does not coalesce. This is our allocator's O(n) operation because it needs
-          to maintain sorted order during insertion. It's technically possible to make this O(log n)
-          by changing the extent list used by the allocator to be a skip list, but that's out of the
-          scope of this implementation."
-
     TUCK !d EXTENT_LIST @d
 
     DUP 0 == IF
@@ -393,7 +363,7 @@ Takes the desired address and page_count, returns nothing. O[n]. )
     THEN
 
     DUP extent.next FIELD @d 0 == IF
-        TODO" link the next extent into the list at the head"
+        TODO" link the new extent into the list at the head"
         EXIT
     THEN
 
@@ -404,6 +374,22 @@ Takes the desired address and page_count, returns nothing. O[n]. )
     REPEAT
 
     TODO" link the new extent into the list in the middle"
+;
+
+( initialize allocator state. )
+: HEAP_INIT
+
+    ( Set every bucket pointer to 0 )
+    0 BEGIN
+        0 OVER DWORD_T BUCKETS INDEX !d
+        1 +
+    DUP 11 == UNTIL
+
+    ( zero the extent list )
+    0 EXTENT_LIST !d
+
+    ( page_count = size of heap in pages )
+    393216 HEAP_BASE NEW_EXTENT
 ;
 
 ( Allocate n pages from a given bucket by walking it and checking if each extent is large enough.
