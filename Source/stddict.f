@@ -115,7 +115,7 @@ CREATE __CAL+ ALIAS __BRH+ ( both instructions are the same length )
         WHATIS DUP -1 <> IF
             9 + PRINTLN
         ELSE
-            POP r" <N/A>" PRINTLN
+            POP r"  <N/A>  " PRINTLN
         THEN
 
         __CAL+ EXIT

@@ -277,7 +277,6 @@ Returns -1 if it cannot find any nonempty buckets. )
         extent.next_bucket FIELD @d SWAP !d
     THEN
 
-    DUP
     DUP extent.next_bucket FIELD @d IF
         ( extent.next_bucket.prev_bucket = extent.prev_bucket )
         DUP extent.next_bucket FIELD @d extent.prev_bucket FIELD
@@ -298,7 +297,6 @@ Returns -1 if it cannot find any nonempty buckets. )
         extent.next FIELD @d EXTENT_LIST !d
     THEN
 
-    DUP
     DUP extent.next FIELD @d IF
         ( extent.next.prev = extent.prev )
         DUP extent.next FIELD @d extent.prev FIELD
@@ -383,7 +381,14 @@ Takes the desired address and page_count, returns nothing. O[n]. )
     TUCK !d EXTENT_LIST @d
 
     DUP 0 == IF
-        TODO" replace the head with the next extent"
+        ( replace the head with the next extent )
+        SWAP
+        DUP EXTENT_LIST !d
+        2DUP extent.next FIELD !d
+        2DUP extent.prev FIELD !d
+        NIP
+        ( set bucket )
+        DUP @d FIND_BUCKET SWAP SET_BUCKET
         EXIT
     THEN
 
