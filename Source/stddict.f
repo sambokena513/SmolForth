@@ -115,13 +115,13 @@ CREATE __CAL+ ALIAS __BRH+ ( both instructions are the same length )
         WHATIS DUP -1 <> IF
             9 + PRINTLN
         ELSE
-            POP r"  <N/A>  " PRINTLN
+            POP r"   <N/A>  " PRINTLN
         THEN
 
         __CAL+ EXIT
     THEN
 
-    PRINTNUM r"  <N/A>  " PRINT @b . 1 + 
+    PRINTNUM r"   <N/A>  " PRINT @b . 1 + 
 ;
 
 ( end start -- :; Disassemble instructions from <start> to <end>, note that DIS is a Forth disassembler, not a general x64 one.
