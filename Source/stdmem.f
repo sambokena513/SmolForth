@@ -257,8 +257,9 @@ Returns -1 if it cannot find any nonempty buckets. )
         ( extent.next_bucket.prev_bucket = extent.prev_bucket )
         DUP extent.next_bucket FIELD @d extent.prev_bucket FIELD
         SWAP extent.prev_bucket FIELD @d SWAP !d
+    ELSE
+        POP
     THEN
-    POP
 ;
 
 ( Remove extent from the address-ordered extent list. )
@@ -277,8 +278,9 @@ Returns -1 if it cannot find any nonempty buckets. )
         ( extent.next.prev = extent.prev )
         DUP extent.next FIELD @d extent.prev FIELD
         SWAP extent.prev FIELD @d SWAP !d
+    ELSE
+        POP
     THEN
-    POP
 ;
 
 ( Given an extent *which is part of no bucket*, and a bucket, make it part of said bucket. )
@@ -334,6 +336,17 @@ Returns the extent's new address. Also changes buckets if necessary.  )
     DUP @d 12 SWAP << +
 ;
 
+( extnt -- true | false :; Is this extent adjacent to the previous one? )
+: MERGE_LEFT?
+    TODO" MERGE_LEFT? should check whether MERGE_LEFT is safe to call on an extent."
+;
+
+( extnt -- extnt.prev :; Merge extent with previous one. )
+: MERGE_LEFT
+    TODO" MERGE_LEFT should merge a given extent with the previous one in the address-ordered list,
+          it assumes that the extents are adjacent, and returns the new start address of the extent."
+;
+
 ( Merge an extent with adjacent ones if able, possibly changing start_page and page_count.
 Returns the extent's new address. )
 : COALESCE_AT_EXTENT
@@ -363,7 +376,13 @@ Takes the desired address and page_count, returns nothing. O[n]. )
     THEN
 
     2DUP > IF
-        TODO" link the new extent into the list at the head"
+        ( link the new extent into the list at the head )
+        2DUP SWAP extent.next FIELD !d
+        2DUP extent.prev FIELD !d
+        POP
+        0 OVER extent.prev FIELD !d
+        DUP EXTENT_LIST !d
+        DUP FIND_BUCKET SWAP SET_BUCKET
         EXIT
     THEN
 
