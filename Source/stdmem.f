@@ -338,13 +338,23 @@ Returns the extent's new address. Also changes buckets if necessary.  )
 
 ( extnt -- true | false :; Is this extent adjacent to the previous one? )
 : MERGE_LEFT?
-    TODO" MERGE_LEFT? should check whether MERGE_LEFT is safe to call on an extent."
+    DUP extent.prev FIELD @d
+
+    ( if there is no prev then we can't merge )
+    DUP 0 == IF
+        2POP FALSE EXIT
+    THEN
+
+    ( return whether the target address is equal to prev.page_count * 4KB + HEAP_BASE,
+    or in other words, the address right after the end of the extent )
+    DUP @d 12 SWAP << + ==
 ;
 
 ( extnt -- extnt.prev :; Merge extent with previous one. )
 : MERGE_LEFT
-    TODO" MERGE_LEFT should merge a given extent with the previous one in the address-ordered list,
-          it assumes that the extents are adjacent, and returns the new start address of the extent."
+    DUP UNLINK_EXTENT
+    DUP extent.prev FIELD @d TUCK
+    @d SWAP @d + SWAP !d
 ;
 
 ( Merge an extent with adjacent ones if able, possibly changing start_page and page_count.
