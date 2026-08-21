@@ -482,3 +482,12 @@ O[n] where n = the number of extents in the bucket. )
 : pFREE
     TUCK NEW_EXTENT COALESCE_AT_EXTENT
 ;
+
+(
+    Note: this allocator is not as optimized as it theoretically could be, a partial rewrite replacing the address-ordered list + buckets with just segregated free lists,
+    and using footers + a bitmap to free instead of sorted insertion would make alloc[] still O[1] for most allocations, O[log n] for allocations where GET_NONEMPTY_BUCKET
+    is invoked, O[E] only for allocations which are in the awkward 1GB to 1.5GB range {though E there can actually only be 1 in practice}, and free[] would always be O[1].
+
+    However, I'm purposefully not going to do that until the performance actually gets annoying, in practice this current implementation should serve as a good reference, and be
+    "good enough" for use in the rest of the stdlib as well as user programs for *quite* a while.
+)
