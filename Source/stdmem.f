@@ -352,16 +352,19 @@ Returns the extent's new address. Also changes buckets if necessary.  )
 
 ( extnt -- extnt.prev :; Merge extent with previous one. )
 : MERGE_LEFT
-    DUP UNLINK_EXTENT
-    DUP extent.prev FIELD @d TUCK
-    @d SWAP @d + SWAP !d
+    DUP UNLINK_EXTENT ( unlink the extent first since we're extending the previous one to cover it )
+    DUP extent.prev FIELD @d ( tos = prev; nos = extnt )
+    DUP BUCKET_UNLINK TUCK ( unlink prev from bucket since it might change, stack after this is [ prev, extnt, prev ] )
+    TUCK @d SWAP @d + SWAP !d ( add together the page counts and update page count for extnt.prev, stack after this is [ prev ] )
+    DUP DUP @d FIND_BUCKET SWAP SET_BUCKET ( relink prev into the appropriate bucket )
 ;
 
-( Merge an extent with adjacent ones if able, possibly changing start_page and page_count.
-Returns the extent's new address. )
+( Merge an extent with adjacent ones if able, possibly changing start_page and page_count. )
 : COALESCE_AT_EXTENT
-    TODO" COALESCE_AT_EXTENT should merge a freshly-made extent (such as from pFREE) with adjacent
-          ones if necessary, and return the new start address of the extent."
+    DUP MERGE_LEFT? IF MERGE_LEFT THEN
+    extent.next FIELD @d DUP IF
+        DUP MERGE_LEFT? IF MERGE_LEFT THEN
+    THEN POP
 ;
 
 ( pivot extnt -- true | false :; If a given extent is not the tail of the extent list,
@@ -477,5 +480,5 @@ O[n] where n = the number of extents in the bucket. )
 
 ( free n pages )
 : pFREE
-    TUCK NEW_EXTENT COALESCE_AT_EXTENT POP
+    TUCK NEW_EXTENT COALESCE_AT_EXTENT
 ;
