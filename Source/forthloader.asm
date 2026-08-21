@@ -42,10 +42,10 @@ global _start
   syscall
 %endmacro
 
-%macro SYS_FTRUNCATE 2 ; fd, length
-  mov rax, 77
+%macro SYS_FSTAT 2 ; fd, statbuf
+  mov rax, 5
   mov rdi, %1
-  mov rsi, %2
+  lea rsi, %2
   syscall
 %endmacro
 
@@ -85,7 +85,7 @@ _start:
   mov [rel filepath_ptr], rax
   .begin:
 
-  SYS_OPENAT AT_FDCWD, [rel filepath_ptr], O_RDWR, 0
+  SYS_OPENAT AT_FDCWD, [rel filepath_ptr], O_RDONLY, 0
 
   test rax, rax
   jns .success_img_openat
@@ -96,15 +96,7 @@ _start:
   .success_img_openat:
   mov [rel img_fd], rax
 
-  SYS_FTRUNCATE [rel img_fd], 2 * GB
-
-  test rax, rax
-  jns .success_img_ftruncate
-
-  SYS_WRITE warnftruncatemsg, warnftruncatemsg_size
-
-  .success_img_ftruncate:
-  SYS_MMAP 2 * GB, PROT_READ | PROT_WRITE | PROT_EXEC, MAP_PRIVATE, [rel img_fd], 0
+  SYS_MMAP 2 * GB, PROT_READ | PROT_WRITE | PROT_EXEC, MAP_PRIVATE | MAP_ANONYMOUS, 0, 0
 
   test rax, rax
   jns .success_img_mmap
@@ -114,6 +106,23 @@ _start:
 
   .success_img_mmap:
   mov r15, rax
+
+  SYS_FSTAT [rel img_fd], [rel statbuf]
+  test rax, rax
+  jns .success_img_fstat
+
+  SYS_WRITE errfstatmsg, errfstatmsg_size
+  jmp .close_img
+
+  .success_img_fstat:
+  call .img_read
+  test rax, rax
+  jns .success_img_read
+
+  SYS_WRITE errreadmsg, errreadmsg_size
+  jmp .close_img
+
+  .success_img_read:
 
   mov r14d, [r15 + 8] ; dstck_start
   add r14, r15
@@ -135,14 +144,21 @@ _start:
   xor rdi, rdi
   syscall
 
+  .img_read:
+  mov rax, -1 ; placeholder
+  ret
+
 section .data
 errmmapmsg db "exiting due to mmap failing", 0xA
 errmmapmsg_size equ $ - errmmapmsg
 filename_fallback db "img.bin", 0
 erropenatmsg db "exiting due to openat failing", 0xA
 erropenatmsg_size equ $ - erropenatmsg
-warnftruncatemsg db "warning: could not extend image to 2 GiB", 0xA
-warnftruncatemsg_size equ $ - warnftruncatemsg
+errfstatmsg db "exiting due to fstat failing", 0xA
+errfstatmsg_size equ $ - errfstatmsg
+errreadmsg db "exiting due to read failing", 0xA
+errreadmsg_size equ $ - errreadmsg
 section .bss
 filepath_ptr resq 1 ; filepath of the image
 img_fd resq 1 ; to hold the file descriptor of img
+statbuf resb 144 ; note, offsest 48 here is the file size
