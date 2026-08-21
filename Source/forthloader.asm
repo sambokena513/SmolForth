@@ -130,6 +130,7 @@ _start:
   mov esp, [r15 + 12] ; rstck_start
   add rsp, r15
 
+  mov rax, r15
   add rax, 20 ; skip header
   call rax ; run Forth
 
@@ -145,7 +146,24 @@ _start:
   syscall
 
   .img_read:
-  mov rax, -1 ; placeholder
+  mov r13, r15
+  mov r12, [rel statbuf + 48]
+
+  .img_single_read:
+  mov rdx, r12
+  mov rsi, r13
+  mov rdi, [rel img_fd]
+  xor rax, rax
+  syscall
+  test rax, rax
+  jz .img_read_end
+  jns .success_single_read
+  ret
+  .success_single_read:
+  add r13, rax
+  sub r12, rax
+  jmp .img_single_read
+  .img_read_end:
   ret
 
 section .data
@@ -161,4 +179,4 @@ errreadmsg_size equ $ - errreadmsg
 section .bss
 filepath_ptr resq 1 ; filepath of the image
 img_fd resq 1 ; to hold the file descriptor of img
-statbuf resb 144 ; note, offsest 48 here is the file size
+statbuf resb 144 ; note, offset 48 here is the file size
