@@ -1,2 +1,4 @@
 Artefacts/
 Backups/
+*.gz
+*.tar
