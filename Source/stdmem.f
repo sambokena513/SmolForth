@@ -1,4 +1,4 @@
-( Dependencies: bootstrap.f, stdstring.f, stdio.f, stddict.f, stdassert.f )
+( Dependencies: bootstrap.f, stdstring.f, stdctx.f, stdio.f, stddict.f, stdassert.f )
 
 ( <stdmem.f> :; This file implements an extent-based page allocator managing a 1.5GB heap.
 This allows user code to use dynamic memory or to implement more sophisticated allocators. )
@@ -137,7 +137,6 @@ This allows user code to use dynamic memory or to implement more sophisticated a
 8 CONSTANT extent.next
 12 CONSTANT extent.prev_bucket
 16 CONSTANT extent.next_bucket
-CREATE FIELD ALIAS +
 
 ( 12 i32 slots so that's 48 bytes of external metadata for the allocator. )
 DWORD_T VARIABLE EXTENT_LIST

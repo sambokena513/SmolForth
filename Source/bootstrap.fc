@@ -407,6 +407,10 @@ CREATE WHILE ALIAS IF IMMEDIATE
     UNIQUE IMMEDIATE
 ;
 
+// FIELD is an alias of + that can be used for getting struct offsets more readably,
+// syntax is generally <struct> <struct.field> FIELD <@*|!*>
+CREATE FIELD ALIAS +
+
 // Integer constants for testing numeric parsers or making sure over/underflow works for different words.
 -9223372036854775808 CONSTANT INT64_MIN
 9223372036854775807 CONSTANT INT64_MAX
@@ -443,14 +447,11 @@ CREATE WHILE ALIAS IF IMMEDIATE
     DUP +? IF
         DUP >C >C
         0 DUP DUP DUP 0 C> 33 SYSCALL // sys_dup2
-        DUP +? IF
-            POP // discard value if no error
-        THEN
         0 DUP DUP DUP DUP C> 3 SYSCALL POP // sys_close
     THEN // open failure
 ;
 // Version of EXECF that gets its input in a more REPL-friendly way.
-: LOAD WORD EXECF ;
+: LOAD WORD EXECF . ;
 
 // Takes a filepath as an argument and writes everything from the image start to HERE \
 // to it, creating the file if it does not exist.

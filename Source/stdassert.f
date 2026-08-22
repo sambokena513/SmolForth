@@ -1,4 +1,4 @@
-( Dependencies: bootstrap.f, stdstring.f, stdio.f, stddict.f )
+( Dependencies: bootstrap.f, stdstring.f, stdctx.f, stdio.f, stddict.f )
 
 ( <stdassert.f> :; Basic handling for fatal or near-fatal errors. )
 
@@ -21,18 +21,12 @@ and then EXIT back to the caller without them noticing anything amiss. )
     [ ' PANIC ] LITERAL ECR32
 ; IMMEDIATE
 
-( Image-relative stack base pointers, we use these instead of directly referencing
-the ones in the image header because later on coroutines will be able to change this,
-so we don't want to rely on a specific execution context. )
-DWORD_T VARIABLE dSP_BASE 8 @d dSP_BASE !d
-DWORD_T VARIABLE rSP_BASE 12 @d rSP_BASE !d
-
 ( Walk the call stack printing return addresses in the format "<addr> in <word>".
 Note that because this is just another word and not an external debugger, this means it will also print it's own address, and where you called it from. )
 : BACKTRACE
     rSP@ BASE SWAP -
     BEGIN DUP 
-    rSP_BASE @d > WHILE
+    CTX @d ctx.rSP_BASE FIELD @d > WHILE
             DUP @q BASE SWAP -
             DUP PRINTNUM r"  in " PRINT
 
