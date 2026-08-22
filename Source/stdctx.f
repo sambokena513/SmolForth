@@ -24,7 +24,11 @@ HERE 4096 ALLOT 12 CONSTANT ctx.lSP_BASE CTX @d ctx.lSP_BASE FIELD !d
 )
 
 16 CONSTANT ctx.dSP CTX @d ctx.dSP FIELD CTX @d ctx.dSP_BASE FIELD @d SWAP !d
-20 CONSTANT ctx.rSP CTX @d ctx.rSP FIELD CTX @d ctx.rSP_BASE FIELD @d SWAP !d
+( a note on rSP specifically, since this is implemented with the hardware return stack rsp,
+I can't really control how it works relating to stack discipline, so just remember here that while every
+forth *software* stack will always have the stack pointer pointing to the next *empty slot*, rSP instead
+points to the *top item*. )
+20 CONSTANT ctx.rSP CTX @d ctx.rSP FIELD CTX @d ctx.rSP_BASE FIELD @d SWAP !d 
 24 CONSTANT ctx.eSP CTX @d ctx.eSP FIELD CTX @d ctx.eSP_BASE FIELD @d SWAP !d
 28 CONSTANT ctx.lSP CTX @d ctx.lSP FIELD CTX @d ctx.lSP_BASE FIELD @d SWAP !d
 
@@ -35,3 +39,19 @@ HERE 4096 ALLOT 12 CONSTANT ctx.lSP_BASE CTX @d ctx.lSP_BASE FIELD !d
 
 DWORD_T VARIABLE eSP CTX @d ctx.eSP FIELD @d eSP !d
 DWORD_T VARIABLE lSP CTX @d ctx.lSP FIELD @d lSP !d
+
+( UPDATE_CTX sets the current stack pointer fields in the current context to their values at the time of the call. )
+: UPDATE_CTX
+    eSP @d CTX @d ctx.eSP FIELD !d
+    lSP @d CTX @d ctx.lSP FIELD !d
+    dSP@ BASE SWAP - CTX @d ctx.dSP FIELD !d
+    rSP@ BASE SWAP - 8 + ( 8 + to skip the return address pushed by UPDATE_CTX itself being called. ) CTX @d ctx.rSP FIELD !d
+;
+
+( RUN_CTX sets the current stack pointers based on the fields in the current context at the time of the call. )
+: RUN_CTX
+    CTX @d ctx.eSP FIELD @d eSP !d
+    CTX @d ctx.lSP FIELD @d lSP !d
+    CTX @d ctx.dSP FIELD @d BASE + dSP!
+    CTX @d ctx.rSP FIELD @d BASE + rSP!
+;
