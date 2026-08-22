@@ -7,7 +7,7 @@ well as various related utilities. )
 you'd do `CTX @d @d`, not `CTX @d`, or to get an offset into the third field,
 `CTX @d ctx.eSP_BASE FIELD` )
 HERE 32 ALLOT DWORD_T VARIABLE CTX CTX !d
-CTX @d CONSTANT MAIN_CTX ( 
+CTX @d CONSTANT MAIN_CTX
 
 ( Note that these stack pointers and base pointers are image-relative, despite the fact that
 the dSP@ and rSP@ words use absolute pointers. )
