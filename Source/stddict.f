@@ -49,7 +49,7 @@ Note that __FORGET does not free memory, it only removes a word from the search 
 
 ( addr entr -- true | false :; Predicate, checks if a given address is part of
 the given entry's code, note that this will not work properly on aliases. )
-: INENTR 2DUP > IF 4 + @d <= ELSE 0 THEN ;
+: INENTR 2DUP > IF 4 + @d <= ELSE 2POP 0 THEN ;
 
 ( addr -- entr | -1 :; Look up what word an address is part of,
 returns -1 if the address is part of no word, otherwise returns the entry. )
@@ -111,11 +111,11 @@ CREATE __CAL+ ALIAS __BRH+ ( both instructions are the same length )
     DUP __CAL? IF
         PRINTNUM r"   <CAL>  " PRINT
         DUP __CAL+ SWAP __CALva @d +
-
+ 
         WHATIS DUP -1 <> IF
             9 + PRINTLN
         ELSE
-            POP r"   <N/A>  " PRINTLN
+            POP r" <N/A>" PRINTLN
         THEN
 
         __CAL+ EXIT
