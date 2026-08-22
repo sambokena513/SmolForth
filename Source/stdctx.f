@@ -65,3 +65,6 @@ which is where you should put your cleanup code. )
    8 8 SAVE_CTX ( one slot offset for rSP because of the SWITCH_CTX call frame, and one for dSP because of the ctx argument. )
    CTX !d RUN_CTX ( make the context switch )
 ;
+
+: dDEPTH dSP@ BASE SWAP - CTX @d ctx.dSP_BASE FIELD @d SWAP - 3 SWAP >> ;
+: rDEPTH rSP@ 8 + BASE SWAP - CTX @d ctx.rSP_BASE FIELD @d - 3 SWAP >> ;
