@@ -1,4 +1,4 @@
-( Dependencies: bootstrap.f, stdstring.f, stdctx.f )
+( Dependencies: bootstrap.f, stdstring.f, stdassert.f, stdctx.f )
 
 ( <stdexcept.f> :; Exceptions and exception handling. Uses the exception stack from <stdctx.f>. )
 
@@ -7,7 +7,7 @@
 
 ( r | -E- handler | handler-addr -D- )
 : PUSH_HANDLER
-
+    TODO" PUSH_HANDLER should push an exception handler to the exception stack."
 ;
 
 ( c | -C- try-sys )
@@ -31,5 +31,7 @@ CREATE ENDTRY ALIAS THEN IMMEDIATE
 
 ( r | handler -E- | exception -D- )
 : THROW
-
+    TODO" THROW should pop an exception handler from the exception stack, pop a value from the data stack,
+          and transfer control to the nearest handler while calling it with that exception value as an arg.
+          Additionally, if the exception stack would underflow, it should call PANIC."
 ;

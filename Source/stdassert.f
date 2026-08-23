@@ -1,11 +1,36 @@
-( Dependencies: bootstrap.f, stdstring.f, stdctx.f, stdexcept.f, stdio.f, stddict.f )
+( Dependencies: bootstrap.f, stdstring.f )
 
-( <stdassert.f> :; Basic handling for fatal or near-fatal errors. )
+( <stdassert.f> :; Basic handling for fatal or near-fatal errors. 
+Note that to avoid a dependency on stdio, as IO can fail and stdassert is meant for handling failures, 
+stdassert defines its own minimal PRINTLN that calls sys_exit on failure. )
+
+( TODO: make this call write in a loop to better handle the edge case of stdout
+being a socket, since partial writes are a lot more common there. )
+: STDASSERTF_PRINT
+    ( call sys_write with the string pointer and length )
+    DUP STRLEN SWAP BASE +
+    >C >C 0 DUP DUP C> C> 1 DUP SYSCALL
+
+    ( if sys_write gives an error, sys_exit with that code )
+    DUP -? IF
+        >C 0 DUP DUP DUP DUP C> 60 SYSCALL
+    ELSE
+        POP
+    THEN
+;
+
+2 VARIABLE STDASSERTF_NEWLINE
+10 STDASSERTF_NEWLINE !b
+0 STDASSERTF_NEWLINE 1 + !b
+
+: STDASSERTF_PRINTLN
+    STDASSERTF_PRINT STDASSERTF_NEWLINE STDASSERTF_PRINT
+;
 
 ( Print an error message, reset REPL state, and start a nested REPL.
 Lets the user choose whether to kill the process or try to repair state
 and continue. )
-: PANIC r" [PANIC] " ABORT PRINTLN INTERPRET ;
+: PANIC r" [PANIC] " ABORT STDASSERTF_PRINTLN INTERPRET ;
 
 ( Panic if a boolean is false with the message "ASSERT FAILURE".
 Used for enforcing invariants, ideally only use this when debugging so that
@@ -18,24 +43,5 @@ essentially this lets you act out the function's role manually,
 and then EXIT back to the caller without them noticing anything amiss. )
 : TODO"
     COMPILE r"
-    [ ' PANIC ] LITERAL ECR32
+    [ CLEAR WORD PANIC FIND ] LITERAL ECR32
 ; IMMEDIATE
-
-( Walk the call stack printing return addresses in the format "<addr> in <word>".
-Note that because this is just another word and not an external debugger, this means it will also print it's own address, and where you called it from. )
-: BACKTRACE
-    rSP@ BASE SWAP -
-    BEGIN DUP 
-    CTX @d ctx.rSP_BASE FIELD @d > WHILE
-            DUP @q BASE SWAP -
-            DUP PRINTNUM r"  in " PRINT
-
-            WHATIS DUP -1 == IF
-                POP r" ???" PRINTLN
-            ELSE
-                9 + PRINTLN
-            THEN
-
-            8 +
-    REPEAT POP
-;

@@ -1,4 +1,4 @@
-( Dependencies: bootstrap.f, stdstring.f, stdctx.f )
+( Dependencies: bootstrap.f, stdstring.f, stdassert.f, stdctx.f, stdexcept.f )
 
 ( <stdio.f> :; This file implements IO functions so users don't need to manually invoke syscalls. )
 
@@ -27,3 +27,5 @@ BYTE_T VARIABLE CHARBUF
 : PUTLN 10 PUTCHAR ;
 : PRINTLN PRINT PUTLN ;
 : PRINTNUM [ NUMBUF 20 + ] LITERAL I64TS PRINT ;
+
+( TODO: eventually make this properly check errors and wrap the syscalls so they can throw exceptions. )

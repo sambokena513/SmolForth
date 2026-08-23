@@ -1,4 +1,4 @@
-( Dependencies: bootstrap.f, stdstring.f, stdctx.f, stdexcept.f, stdio.f )
+( Dependencies: bootstrap.f, stdstring.f, stdassert.f, stdctx.f, stdexcept.f, stdio.f )
 
 ( <stddict.f> :; This file implements various dictionary introspection and modification
 words for easier metaprogramming. )
@@ -160,3 +160,22 @@ this is not valid to use on words that were created using the `CREATE word ALIAS
 as those do not have their entries placed right after their bodies.
 And neither does it work on fresh dict entries that are still using the placeholder code pointer. )
 : WORDLEN ' DUP 4 + @d SWAP - ;
+
+( Walk the call stack printing return addresses in the format "<addr> in <word>".
+Note that because this is just another word and not an external debugger, this means it will also print it's own address, and where you called it from. )
+: BACKTRACE
+    rSP@ BASE SWAP -
+    BEGIN DUP 
+    CTX @d ctx.rSP_BASE FIELD @d > WHILE
+            DUP @q BASE SWAP -
+            DUP PRINTNUM r"  in " PRINT
+
+            WHATIS DUP -1 == IF
+                POP r" ???" PRINTLN
+            ELSE
+                9 + PRINTLN
+            THEN
+
+            8 +
+    REPEAT POP
+;
