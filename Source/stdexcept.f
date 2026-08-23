@@ -2,26 +2,34 @@
 
 ( <stdexcept.f> :; Exceptions and exception handling. Uses the exception stack from <stdctx.f>. )
 
+
+( A handler in the code below refers to a value on the exception stack consisting of an execution context, and an address to resume execution at. )
+
+( r | -E- handler | handler-addr -D- )
+: PUSH_HANDLER
+
+;
+
 ( c | -C- try-sys )
 ( r | -E- handler )
 : TRY
-
+    HERE 2 + >C
+    0 COMPILE LITERAL
+    [ CLEAR WORD PUSH_HANDLER FIND ] LITERAL ECR32
 ; IMMEDIATE
 
 ( c | try-sys -C- catch-sys )
 ( r | -D- exception )
 : CATCH
+    C>
+    0 COMPILE BRANCH HERE >C
+    HERE SWAP !q
+; IMMEDIATE
 
 ( c | catch-sys -C- )
-; IMMEDIATE
+CREATE ENDTRY ALIAS THEN IMMEDIATE
 
-: ENDTRY
-
-; IMMEDIATE
-
-( r | handler -E- )
-( r | exception -D- )
-( Note: apart from these stack effects THROW also restores data- and return-stack depth to what it was at the time of calling TRY. )
+( r | handler -E- | exception -D- )
 : THROW
 
 ;
