@@ -28,6 +28,11 @@
     dSP@ BASE SWAP - >E
 ;
 
+( r | handler -E- )
+: POP_HANDLER
+    eSP @d -16 + eSP !d
+;
+
 ( c | -C- try-sys )
 ( r | -E- handler )
 : TRY
@@ -39,6 +44,7 @@
 ( c | try-sys -C- catch-sys )
 ( r | -D- exception )
 : CATCH
+    [ CLEAR WORD POP_HANDLER FIND ] LITERAL ECR32
     C>
     0 COMPILE BRANCH HERE >C
     HERE SWAP !q
