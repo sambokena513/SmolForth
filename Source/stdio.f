@@ -1,4 +1,4 @@
-( Dependencies: bootstrap.f, stdstring.f )
+( Dependencies: bootstrap.f, stdstring.f, stdctx.f )
 
 ( <stdio.f> :; This file implements IO functions so users don't need to manually invoke syscalls. )
 

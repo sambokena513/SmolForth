@@ -1,4 +1,4 @@
-( Dependencies: bootstrap.f, stdstring.f, stdctx.f, stdio.f )
+( Dependencies: bootstrap.f, stdstring.f, stdctx.f, stdexcept.f, stdio.f )
 
 ( <stddict.f> :; This file implements various dictionary introspection and modification
 words for easier metaprogramming. )

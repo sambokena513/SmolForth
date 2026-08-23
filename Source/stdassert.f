@@ -1,4 +1,4 @@
-( Dependencies: bootstrap.f, stdstring.f, stdctx.f, stdio.f, stddict.f )
+( Dependencies: bootstrap.f, stdstring.f, stdctx.f, stdexcept.f, stdio.f, stddict.f )
 
 ( <stdassert.f> :; Basic handling for fatal or near-fatal errors. )
 

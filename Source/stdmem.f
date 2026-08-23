@@ -1,4 +1,4 @@
-( Dependencies: bootstrap.f, stdstring.f, stdctx.f, stdio.f, stddict.f, stdassert.f )
+( Dependencies: bootstrap.f, stdstring.f, stdctx.f, stdexcept.f, stdio.f, stddict.f, stdassert.f )
 
 ( <stdmem.f> :; This file implements an extent-based page allocator managing a 1.5GB heap.
 This allows user code to use dynamic memory or to implement more sophisticated allocators. )
