@@ -32,8 +32,8 @@
 
 - We use the regular hardware return stack (rsp) for return addresses, but we make this point into the image rather than using the OS-afforded one, our return stack is 8KB which allows a call depth of 1024. Note that because the rsp and r14 grow towards each other one may temporarily exceed 8KB at the cost of the other needing to be smaller, so you might not actually get stack corruption every time you go past the end.
 
-- The image is 2GiB so that we can always compile word calls as `call rel32` (subroutine-threading), as for why it's not shorter with a possible later call to ftruncate that's because the image memory also serves as the heap for any programs inside it, meaning that dynamically allocating programs might choose to make their allocations in the image, and if they're storing for example pictures, files, or other data structures they may very well need the 2GiB.
-- MAP_PRIVATE is used rather than MAP_SHARED so that users can verify their image does not contain illegal intermediate state, and save it purposefully with words like SAVE-IMG and BACKUP-IMG rather than writeback happening automatically.
+- The image is 2GiB so that we can always compile word calls as `call rel32` (subroutine-threading), as for why it's not shorter with a possible later call to mmap that's because the image memory also serves as the heap for any programs inside it, meaning that dynamically allocating programs might choose to make their allocations in the image, and if they're storing for example pictures, files, or other data structures they may very well need the 2GiB.
+- The image is read into a MAP_PRIVATE | MAP_ANONYMOUS mapping by the loader rather than directly being mmaped with MAP_SHARED so that we get the semantics of the image being a runtime snapshot of the disk image rather than actually being the image on disk, this lets users explicitly save the image when they can verify it does not contain illegal intermediate state, rather than writeback happening automatically and possibly corrupting the disk image on crashes. This also means that the loader can run images even when it only has read permissions, since otherwise it would need to open the file with O_RDWR.
 
 - The ABI treats every register apart from r14 and r15 (which are reserved) as caller-saved, you are encouraged to not use registers for storing intermediate values, use the data stack or only use registers in primitives that call nothing else.
 Apart from that, clean up any intermediates on the stack when you're done with them, you shouldn't rely on the stack being emptied when the image is reloaded to make your code work.
@@ -80,13 +80,19 @@ The standard library tries to be unopinionated in low level functionality, thoug
 
 - <stdstring.f> :; String-related utilities, is a dependency of every other standard library module. The reason for this is because it also contains the implementation of comments, which are needed by all non-trivial code.
 
+- <stdassert.f> :; Basic handling for fatal or near-fatal errors. Note that to avoid a dependency on stdio, as IO can fail and stdassert is meant for handling failures, stdassert defines its own minimal PRINTLN that calls sys_exit on failure.
+
+- <stdctx.f> :; Execution contexts and the ability to switch between them, as well as various related utilities.
+
+- <stdexcept.f> :; Exceptions and exception handling. Uses the exception stack from <stdctx.f>.
+
+- <stdio.f> :; Input-output words and syscall wrappers, note that the syscall wrappers take absolute addresses and not image-relative ones, and that the named IO functions throw on errors.
+
 - <stddict.f> :; Dictionary manipulation and listing words, required for code that wants to remove dictionary entries after compilation (to avoid polluting the global scope), but other than that it's mostly useful in the REPL.
 
 - <stdmem.f> :; Dynamic memory allocation in the form of a page allocator API:
     - <n> pALLOC - Allocates n contiguous pages and returns the address of the first one.
     - <n> <addr> pFREE - Frees n pages starting at addr.
-
-- <stdio.f> :; Input-output words and syscall wrappers, note that the syscall wrappers take absolute addresses and not image-relative ones.
 
 ## Primitive Word List:
 
