@@ -3,7 +3,7 @@
 ( <stdinit.f> :; INIT function that can be used with SET_INIT to make interactive images that
 first reset all important stdlib state before calling INTERPRET. )
 
-: INIT
+: CTX_INIT
     ( make sure that upon starting we are in the main context )
     MAIN_CTX CTX !d
     MAIN_eSP_BASE eSP !d
@@ -22,11 +22,11 @@ first reset all important stdlib state before calling INTERPRET. )
 
     MAIN_lSP_BASE MAIN_CTX ctx.lSP_BASE FIELD !d
     MAIN_lSP_BASE MAIN_CTX ctx.lSP FIELD !d
+;
 
-    ( initialize allocator )
+: INIT
+    CTX_INIT
     HEAP_INIT
-
-    ( finally, print welcome message and enter the REPL )
     r" Welcome to SmolForth!" PRINTLN
     INTERPRET
 ;

@@ -23,6 +23,9 @@
 if you want to invoke a non-throwing syscall manually use one of the SYSCALLn wrappers,
 and if you want to extend the library with new IO functions use one of the #SYSCALLn wrappers. )
 
+1 CONSTANT STDOUT
+0 CONSTANT STDIN
+
 : READ 0 #SYSCALL3 ;
 : WRITE 1 #SYSCALL3 ;
 : OPENAT 257 #SYSCALL4 ;
@@ -31,12 +34,33 @@ we just call sys_openat while specifying that the path is relative to the CWD. )
 : OPEN -100 OPENAT ; 
 : CLOSE 3 #SYSCALL1 ;
 
+DWORD_T VARIABLE FDBUF ( for use in WRITE_FULL and READ_FULL, DWORD_T since on Linux file descriptors are 32 bits. )
+
+( WRITE_FULL and READ_FULL respectively are wrappers around WRITE and READ that guarantee that all bytes requested where read/written on success.
+They return nothing on success, and throw on failure. Note that a failure does not mean no IO was performed, it could also mean a partial read or write happened. )
+: WRITE_FULL
+    FDBUF !d BEGIN
+    OVER WHILE
+        2DUP FDBUF @d WRITE TUCK ( copy the val so our stack looks like [ count, written, buf, written ] )
+        + -ROT SWAP - SWAP ( add the return value to the buffer and subtract it from the count to write )
+    REPEAT
+    2POP
+;
+
+: READ_FULL
+    FDBUF !d BEGIN
+    OVER WHILE
+        2DUP FDBUF @d READ TUCK ( copy the val so our stack looks like [ count, written, buf, written ] )
+        + -ROT SWAP - SWAP ( add the return value to the buffer and subtract it from the count to write )
+    REPEAT
+    2POP
+;
+
 21 VARIABLE NUMBUF
 BYTE_T VARIABLE CHARBUF
 
-( TODO: add WRITE_FULL and READ_FULL and make PRINT and related functions use those instead. )
-: PRINT DUP STRLEN SWAP BASE + 1 WRITE POP ;
-: PUTCHAR CHARBUF !b 1 CHARBUF BASE + 1 WRITE POP ;
+: PRINT DUP STRLEN SWAP BASE + STDOUT WRITE_FULL ;
+: PUTCHAR CHARBUF !b 1 CHARBUF BASE + STDOUT WRITE_FULL ;
 : PUTLN 10 PUTCHAR ;
 : PRINTLN PRINT PUTLN ;
 : PRINTNUM [ NUMBUF 20 + ] LITERAL I64TS PRINT ;
