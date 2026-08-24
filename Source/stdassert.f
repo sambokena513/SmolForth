@@ -9,9 +9,9 @@ stdassert defines its own minimal PRINTLN that calls sys_exit on failure. )
     DUP STRLEN DUP ROT BASE +
     >C >C 0 DUP DUP C> C> 1 DUP SYSCALL
 
-    ( if sys_write gives an error or performs a partial write, sys_exit with code 1 )
-    < IF
-        0 DUP DUP DUP DUP 1 60 SYSCALL
+    ( if sys_write gives an error or performs a partial write, sys_exit with code 74 for EX_IOERR )
+    <> IF
+        0 DUP DUP DUP DUP 74 60 SYSCALL
     THEN
 ;
 
