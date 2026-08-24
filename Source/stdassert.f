@@ -4,18 +4,14 @@
 Note that to avoid a dependency on stdio, as IO can fail and stdassert is meant for handling failures, 
 stdassert defines its own minimal PRINTLN that calls sys_exit on failure. )
 
-( TODO: make this call write in a loop to better handle the edge case of stdout
-being a socket, since partial writes are a lot more common there. )
 : STDASSERTF_PRINT
     ( call sys_write with the string pointer and length )
-    DUP STRLEN SWAP BASE +
+    DUP STRLEN DUP ROT BASE +
     >C >C 0 DUP DUP C> C> 1 DUP SYSCALL
 
-    ( if sys_write gives an error, sys_exit with that code )
-    DUP -? IF
-        >C 0 DUP DUP DUP DUP C> 60 SYSCALL
-    ELSE
-        POP
+    ( if sys_write gives an error or performs a partial write, sys_exit with code 1 )
+    < IF
+        0 DUP DUP DUP DUP 1 60 SYSCALL
     THEN
 ;
 

@@ -1,4 +1,4 @@
-( Dependencies: bootstrap.f )
+( Dependencies: bootstrap.f, stdstring.f )
 
 ( <stdctx.f> :; Execution contexts and the ability to switch between them, as
 well as various related utilities. )
@@ -60,7 +60,7 @@ While applying an offset to the saved data stack and return stack pointers. )
 
 ( SWITCH_CTX is essentially the atomic task-swapping primitive.
 It takes in a context, saves the current context such that execution resumes right after the call to SWITCH_CTX,
-which is where you should put your cleanup code. )
+which is where you should put your cleanup code, and then switches to that context. )
 : SWITCH_CTX ( ctx -- )
    8 8 SAVE_CTX ( one slot offset for rSP because of the SWITCH_CTX call frame, and one for dSP because of the ctx argument. )
    CTX !d RUN_CTX ( make the context switch )
