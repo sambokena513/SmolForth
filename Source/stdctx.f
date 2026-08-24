@@ -24,22 +24,24 @@ HERE 4096 ALLOT 12 CONSTANT ctx.lSP_BASE CTX @d ctx.lSP_BASE FIELD !d
     all of them to their current values.
 )
 
-16 CONSTANT ctx.dSP CTX @d ctx.dSP FIELD CTX @d ctx.dSP_BASE FIELD @d SWAP !d
+16 CONSTANT ctx.dSP dSP@ BASE SWAP - MAIN_CTX ctx.dSP FIELD !d
 ( a note on rSP specifically, since this is implemented with the hardware return stack rsp,
 I can't really control how it works relating to stack discipline, so just remember here that while every
 forth *software* stack will always have the stack pointer pointing to the next *empty slot*, rSP instead
 points to the *top item*. )
-20 CONSTANT ctx.rSP CTX @d ctx.rSP FIELD CTX @d ctx.rSP_BASE FIELD @d SWAP !d 
-24 CONSTANT ctx.eSP CTX @d ctx.eSP FIELD CTX @d ctx.eSP_BASE FIELD @d SWAP !d
-28 CONSTANT ctx.lSP CTX @d ctx.lSP FIELD CTX @d ctx.lSP_BASE FIELD @d SWAP !d
+20 CONSTANT ctx.rSP rSP@ BASE SWAP - MAIN_CTX ctx.rSP FIELD !d
+24 CONSTANT ctx.eSP MAIN_CTX ctx.eSP_BASE FIELD @d MAIN_CTX ctx.eSP FIELD !d
+28 CONSTANT ctx.lSP MAIN_CTX ctx.lSP_BASE FIELD @d MAIN_CTX ctx.lSP FIELD !d
 
 (
     Actual eSP and lSP variables for use in the implementation of locals and exceptions,
     these are the values copied into ctx.*SP by SAVE_CTX
 )
 
-DWORD_T VARIABLE eSP CTX @d ctx.eSP FIELD @d eSP !d
-DWORD_T VARIABLE lSP CTX @d ctx.lSP FIELD @d lSP !d
+MAIN_CTX ctx.eSP_BASE FIELD @d CONSTANT MAIN_eSP_BASE
+MAIN_CTX ctx.lSP_BASE FIELD @d CONSTANT MAIN_lSP_BASE
+DWORD_T VARIABLE eSP MAIN_eSP_BASE eSP !d
+DWORD_T VARIABLE lSP MAIN_lSP_BASE lSP !d
 
 ( SAVE_CTX sets the current stack pointer fields in the current context to their values at the time of the call.
 While applying an offset to the saved data stack and return stack pointers. )
