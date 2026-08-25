@@ -375,6 +375,10 @@ Takes the desired address and page_count, returns nothing. O[n]. )
 : NEW_EXTENT
     TUCK !d EXTENT_LIST @d
 
+    ( zero the bucket prev and next fields here since we can't assume the extent currently has null pointers there )
+    OVER 0 SWAP extent.prev_bucket FIELD !d
+    OVER 0 SWAP extent.next_bucket FIELD !d
+
     DUP 0 == IF
         ( replace the head with the next extent )
         SWAP
