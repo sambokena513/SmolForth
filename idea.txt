@@ -1,0 +1,41 @@
+k, just got a really important idea relating to the project so I'm writing it
+down here; for a long time I've known that I prefer languages with macros, and
+wanted to make a language with turing complete ones, but I thought I'd never
+get that with my forth, since the dictionary is y'know.
+
+But! I can do exactly that, there's a few ways of going about it but they all
+involve adding one more flag to the dictionary entries ( a MACRO flag ), and
+messing with the HERE variable to make normal definitions go into memory that
+is not persistent.
+
+The two main options here are:
+
+    a) make macros be dynamically allocated using the pALLOC/pFREE API (quite
+       tricky regarding data structures and would probably waste a bit of memory).
+
+    b) change the image memory layout to reserve space for macros.
+
+I'm probably going with option b. So that means that I have to change the
+layout from this:
+
+512MB dict -> 1.5GB heap
+
+To this:
+
+256MB dict -> 256MB macro dict -> 1.5GB heap
+
+Which is actually not as dangerous of a change as it may seem. Macros directly
+reduce the size of the persistent dictionary since most constants can be
+represented as macros now, and any temporary compile-time IMMEDIATE words can
+often be represented as macros too, and to top it off 256MB for what is
+inherently *compiled code space* is already pretty overkill.
+
+So yeah, that's pretty much what I'm gonna do. I'll probably put the
+implementation in <bootstrap.fc> so all programs can make use of it.
+And I'll then need to make some decisions regarding which libraries replace
+which constants (mostly struct offsets) with macros. I'm leaning towards
+replacing pretty much all the struct offsets in <stdctx.f>, <stdmem.f>,
+<stdslab.f>, and <stdco.f> with macro versions, though I'll of course decide
+later.
+
+It's really nice to have good ideas...
