@@ -1,4 +1,4 @@
-( Dependencies: bootstrap.f, stdstring.f, stdassert.f, stdctx.f, stdexcept.f, stdio.f, stddict.f )
+( Dependencies: bootstrap.f, stdstring.f, stdassert.f, stdctx.f, stdexcept.f, stdio.f, stddict.f, stdmem.f, stdslab.f, stdco.f )
 
 ( <stdinit.f> :; INIT function that can be used with SET_INIT to make interactive images that
 first reset all important stdlib state before calling INTERPRET. )
@@ -27,6 +27,7 @@ first reset all important stdlib state before calling INTERPRET. )
 : INIT
     CTX_INIT
     HEAP_INIT
+    STDCO_INIT
     r" Welcome to SmolForth!" PRINTLN
     INTERPRET
 ;

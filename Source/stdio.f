@@ -64,3 +64,6 @@ BYTE_T VARIABLE CHARBUF
 : PUTLN 10 PUTCHAR ;
 : PRINTLN PRINT PUTLN ;
 : PRINTNUM [ NUMBUF 20 + ] LITERAL I64TS PRINT ;
+
+( . is a primitive and we want existing calls to still work so we patch its code body here instead of making a new entry for it )
+HERE CLEAR WORD . FIND 4 + @d aHERE !d ] PRINTNUM PUTLN [ -61 ,b aHERE !d
