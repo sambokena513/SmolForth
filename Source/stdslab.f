@@ -33,6 +33,13 @@ DWORD_T VARIABLE SLAB
 : SLAB_ALLOC
     SLAB !d
 
+    ( return -1 if there is no free memory )
+    SLAB @d slab.free_stack_base FIELD @d
+    SLAB @d slab.free_stack FIELD @d
+    <= IF
+        -1 EXIT
+    THEN
+
     DWORD_T SLAB @d slab.free_stack FIELD @d -
     SLAB @d slab.free_stack FIELD !d
 
