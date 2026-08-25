@@ -61,8 +61,8 @@ CREATE ENDTRY ALIAS THEN IMMEDIATE
            Continuing may cause memory corruption." PANIC
     THEN
 
-    ( we juggle the exception value through the exception stack so it isn't lost when we set dSP )
-    E> SWAP >E BASE + dSP! E>
+    ( we juggle the exception value through the control flow stack so it isn't lost when we set dSP )
+    >C E> BASE + dSP! C>
     E> lSP !d
     E> DUP E>
     BASE + SWAP !q ( write handler into the return address )
