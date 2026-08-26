@@ -6,7 +6,13 @@
     TODO: actually implement this;
     it'll be a round-robin scheduler with CPU budgets for each task and a `runnable?` field
     that if -1 means the scheduler is allowed to run the task, and if something else means the task
-    is waiting on IO from that fd, epoll/poll won't be in the core scheduler, but rather be one of the tasks.
+    is waiting on IO from that fd, epoll won't be in the core scheduler, but rather be one of the tasks.
+
+    The epoll task will call epoll_wait with a timeout of 0 if there are still runnable tasks,
+    and with a timeout of -1 if there are no tasks to run except itself.
+
+    We also use EPOLLONESHOT, this lets async IO functions be a lot simpler as each function
+    simply registers an fd with epoll_ctl, and the epoll task calls epoll_wait.
 )
 
 65536 CONSTANT MAX_TASKS

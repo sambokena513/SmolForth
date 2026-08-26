@@ -68,3 +68,11 @@ CREATE ENDTRY ALIAS THEN IMMEDIATE
     BASE + SWAP !q ( write handler into the return address )
     BASE + rSP! ( restore return stack, thus throwing us into the handler )
 ;
+
+( r | xt -D- e_val :; ANS Forth-style catch taking an xt, returns the exception value if the word threw, or 0 if it didn't. )
+: DYN_CATCH
+    TRY
+        EXECUTE 0
+    CATCH
+    ENDTRY
+;
