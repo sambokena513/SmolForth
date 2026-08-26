@@ -439,11 +439,27 @@ CREATE FIELD ALIAS +
 // tail call version of SELF
 : TSELF aCOMP_START -4 + EJR32 ; IMMEDIATE
 
-// TODO
-//   Put MACROS/ENDMACROS/PURGE_MACROS here, and make IDUMP call PURGE_MACROS.
-//   Since macros are essentially a core language feature, we need to implement them in this file
-//   to ensure all programs have access to them.
-// ODOT
+// Since macros are a core language feature, we need to implement them in this file
+// to ensure all programs have access to them.
+DWORD_T VARIABLE HERE_RET
+256 1024 1024 * * CONSTANT MACRO_HERE_START
+DWORD_T VARIABLE MACRO_HERE MACRO_HERE_START MACRO_HERE !d
+
+// MACROS makes definitions from after it is called to when ENDMACROS is called be allocated in non-persistent memory.
+: MACROS
+    HERE HERE_RET !d
+    MACRO_HERE @d aHERE !d
+;
+
+: ENDMACROS
+    HERE MACRO_HERE !d
+    HERE_RET @d aHERE !d
+;
+
+// PURGE_MACROS unlinks all words allocated in non-persistent memory from the dictionary.
+: PURGE_MACROS
+    // TODO: walk the dictionary and unlink each entry that has an address equal to or higher than MACRO_HERE_START
+;
 
 // Take string pointer to filepath, attempt to open a file with it and redirect stdin to the file,
 // closing whatever fd stdin was previously.

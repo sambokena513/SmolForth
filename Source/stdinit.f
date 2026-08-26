@@ -24,8 +24,13 @@ first reset all important stdlib state before calling INTERPRET. )
     MAIN_lSP_BASE MAIN_CTX ctx.lSP FIELD !d
 ;
 
+: MACRO_INIT
+    MACRO_HERE_START MACRO_HERE !d
+;
+
 : INIT
     CTX_INIT
+    MACRO_INIT
     HEAP_INIT
     STDCO_INIT
     r" Welcome to SmolForth!" PRINTLN
