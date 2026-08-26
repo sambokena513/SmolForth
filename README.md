@@ -135,5 +135,5 @@ The standard library tries to be unopinionated in low level functionality, thoug
     ```
     jmp rel32 ; number
     ```
-- `ABORT` - Takes a string and prints it to stdout before calling CLEAR, used for REPL errors.
+- `ABORT` - Takes a string and prints it to stdout before resetting parser state and redirecting stdin to /dev/tty, used for REPL errors.
 - `INTERPRET` - Calls WORD, NUMBER?, FIND, EXECUTE, ECR32, LITERAL, and ABORT based on the current state and dictionary entry flags; the outer interpreter.

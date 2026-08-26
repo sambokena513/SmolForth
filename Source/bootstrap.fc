@@ -458,7 +458,14 @@ DWORD_T VARIABLE MACRO_HERE MACRO_HERE_START MACRO_HERE !d
 
 // PURGE_MACROS unlinks all words allocated in non-persistent memory from the dictionary.
 : PURGE_MACROS
-    // TODO: walk the dictionary and unlink each entry that has an address equal to or higher than MACRO_HERE_START
+    0 LATEST BEGIN
+    DUP WHILE // while curr != NULL
+        // TODO: walk the dictionary and unlink each entry that has an address equal to or higher than MACRO_HERE_START
+
+        0 . // placeholder code
+
+        NIP DUP @d // prev := curr; curr := next
+    REPEAT 2POP
 ;
 
 // Take string pointer to filepath, attempt to open a file with it and redirect stdin to the file,
