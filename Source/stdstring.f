@@ -41,12 +41,11 @@ this *is* the file that implements them, and we cannot use comments until they e
 
 ( Get one character from the terminal input buffer and advance the parsing cursor. )
 : GETCHAR
-    TIB_LEN 255 & 255 == IF
-        CLEAR
-        TSELF
-    THEN
-
     TIB_IDX TIB_LEN == IF
+        TIB_LEN 255 & 255 == IF
+            CLEAR
+        THEN
+
         REFILL
         TSELF
     THEN

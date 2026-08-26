@@ -31,7 +31,7 @@ MACROS
 ENDMACROS
 
 ( temporary variable to make the code a bit cleaner )
-DWORD_T TMPVAR SLAB ( TODO: debug WORD, removing a whitespace here seems to freeze the compiler??? )
+DWORD_T TMPVAR SLAB
 
 ( Print a slab's fields. )
 : PRINT_SLAB
