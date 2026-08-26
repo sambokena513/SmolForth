@@ -439,6 +439,12 @@ CREATE FIELD ALIAS +
 // tail call version of SELF
 : TSELF aCOMP_START -4 + EJR32 ; IMMEDIATE
 
+// TODO
+//   Put MACROS/ENDMACROS/PURGE_MACROS here, and make IDUMP call PURGE_MACROS.
+//   Since macros are essentially a core language feature, we need to implement them in this file
+//   to ensure all programs have access to them.
+// ODOT
+
 // Take string pointer to filepath, attempt to open a file with it and redirect stdin to the file,
 // closing whatever fd stdin was previously.
 : EXECF
