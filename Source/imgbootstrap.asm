@@ -316,7 +316,6 @@ db 0
 db "REFILL", 0
 
 
-; TODO: clean this up so that the condition of tib_idx = 0 and tib_len = 255 is handled correctly
 ; WORD parses the next word in the TIB,
 ; and returns its image-relative address
 WORD_:
