@@ -18,6 +18,8 @@
         } Slab;
 )
 
+MACROS
+
 0 CONSTANT slab.max_obj_count
 4 CONSTANT slab.obj_size
 8 CONSTANT slab.mem_size
@@ -26,8 +28,21 @@
 20 CONSTANT slab.free_stack_base
 24 CONSTANT slab.free_stack
 
+ENDMACROS
+
 ( temporary variable to make the code a bit cleaner )
-DWORD_T VARIABLE SLAB
+DWORD_T TMPVAR SLAB ( TODO: debug WORD, removing a whitespace here seems to freeze the compiler??? )
+
+( Print a slab's fields. )
+: PRINT_SLAB
+    r" max_obj_count: " PRINT DUP slab.max_obj_count FIELD @d .
+    r" obj_size: " PRINT DUP slab.obj_size FIELD @d .
+    r" mem_size: " PRINT DUP slab.mem_size FIELD @d .
+    r" mem_start: " PRINT DUP slab.mem_start FIELD @d .
+    r" free_stack_size: " PRINT DUP slab.free_stack_size FIELD @d .
+    r" free_stack_base: " PRINT DUP slab.free_stack_base FIELD @d .
+    r" free_stack: " PRINT slab.free_stack FIELD @d .
+;
 
 ( r | slab -D- addr :; Allocate one block of memory from a given slab. )
 : SLAB_ALLOC

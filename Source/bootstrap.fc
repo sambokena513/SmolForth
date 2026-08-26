@@ -460,12 +460,29 @@ DWORD_T VARIABLE MACRO_HERE MACRO_HERE_START MACRO_HERE !d
 : PURGE_MACROS
     0 LATEST BEGIN
     DUP WHILE // while curr != NULL
-        // TODO: walk the dictionary and unlink each entry that has an address equal to or higher than MACRO_HERE_START
-
-        0 . // placeholder code
-
-        NIP DUP @d // prev := curr; curr := next
+        DUP MACRO_HERE_START <= IF // should unlink
+            @d // in both cases we advance curr but not prev
+            OVER IF
+                // unlink normally
+                2DUP SWAP !d
+            ELSE
+                // special case, make LATEST point to next
+                DUP aINTERPS !d
+            THEN
+        ELSE // skip
+            NIP DUP @d // prev := curr; curr := next
+        THEN
     REPEAT 2POP
+;
+
+// TMPVAR is used when you want a variable's *backing memory* to be persistent but its \
+// *entry* to be a macro. It essentially lets you give leaf node functions local variables \
+// more efficiently.
+: TMPVAR
+    HERE SWAP ALLOT
+    MACROS
+    CONSTANT
+    ENDMACROS
 ;
 
 // Take string pointer to filepath, attempt to open a file with it and redirect stdin to the file,
@@ -484,9 +501,13 @@ DWORD_T VARIABLE MACRO_HERE MACRO_HERE_START MACRO_HERE !d
 
 // Takes a filepath as an argument and writes everything from the image start to HERE \
 // to it, creating the file if it does not exist.
+// Note that IDUMP should never be called while HERE points into the macro dictionary,
+// or it will end up writing potentially up to 256MB more data than it should.
 : IDUMP
+    PURGE_MACROS // to avoid saving the image with illegal dictionary pointers we remove all macros first
+
     // we open the file with O_APPEND, O_TRUNC, O_CREAT, and O_WRONLY
-    >C 0 DUP DUP 493 1024 512 64 1 | | | BASE C> + 2 SYSCALL // sys_open
+    >C 0 DUP DUP 493 [ 1024 512 64 1 | | | ] LITERAL BASE C> + 2 SYSCALL // sys_open
     DUP +? IF
         HERE
 

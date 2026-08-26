@@ -132,11 +132,15 @@ This allows user code to use dynamic memory or to implement more sophisticated a
 512 1024 1024 * * CONSTANT HEAP_BASE
 
 ( Some helpers to make the syntax for the extent struct a bit nicer. )
+MACROS
+
 0 CONSTANT extent.page_count
 4 CONSTANT extent.prev
 8 CONSTANT extent.next
 12 CONSTANT extent.prev_bucket
 16 CONSTANT extent.next_bucket
+
+ENDMACROS
 
 ( 12 i32 slots so that's 48 bytes of external metadata for the allocator. )
 DWORD_T VARIABLE EXTENT_LIST
@@ -144,7 +148,7 @@ DWORD_T 11 * VARIABLE BUCKETS
 
 ( Index an array with the syntax `idx val_size arr INDEX`
 Note that this just computes the address, like lea would in x64, it does not dereference. )
-QWORD_T VARIABLE ARR
+QWORD_T TMPVAR ARR
 : INDEX ARR !q * ARR @q + ;
 FORGET ARR POP
 

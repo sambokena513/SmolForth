@@ -11,10 +11,14 @@ CTX @d CONSTANT MAIN_CTX
 
 ( Note that these stack pointers and base pointers are image-relative, despite the fact that
 the dSP@ and rSP@ words use absolute pointers. )
+MACROS
+
 0 CONSTANT ctx.dSP_BASE CTX @d ctx.dSP_BASE FIELD 8 @d SWAP !d
 4 CONSTANT ctx.rSP_BASE CTX @d ctx.rSP_BASE FIELD 12 @d SWAP !d
-HERE 4096 ALLOT 8 CONSTANT ctx.eSP_BASE CTX @d ctx.eSP_BASE FIELD !d
-HERE 4096 ALLOT 12 CONSTANT ctx.lSP_BASE CTX @d ctx.lSP_BASE FIELD !d
+ENDMACROS HERE 4096 ALLOT MACROS 8 CONSTANT ctx.eSP_BASE CTX @d ctx.eSP_BASE FIELD !d
+ENDMACROS HERE 4096 ALLOT MACROS 12 CONSTANT ctx.lSP_BASE CTX @d ctx.lSP_BASE FIELD !d
+
+ENDMACROS
 
 (
     While the base pointers of a context should always be up to date,
@@ -24,6 +28,8 @@ HERE 4096 ALLOT 12 CONSTANT ctx.lSP_BASE CTX @d ctx.lSP_BASE FIELD !d
     all of them to their current values.
 )
 
+MACROS
+
 16 CONSTANT ctx.dSP dSP@ BASE SWAP - MAIN_CTX ctx.dSP FIELD !d
 ( a note on rSP specifically, since this is implemented with the hardware return stack rsp,
 I can't really control how it works relating to stack discipline, so just remember here that while every
@@ -32,6 +38,8 @@ points to the *top item*. )
 20 CONSTANT ctx.rSP rSP@ BASE SWAP - MAIN_CTX ctx.rSP FIELD !d
 24 CONSTANT ctx.eSP MAIN_CTX ctx.eSP_BASE FIELD @d MAIN_CTX ctx.eSP FIELD !d
 28 CONSTANT ctx.lSP MAIN_CTX ctx.lSP_BASE FIELD @d MAIN_CTX ctx.lSP FIELD !d
+
+ENDMACROS
 
 (
     Actual eSP and lSP variables for use in the implementation of locals and exceptions,

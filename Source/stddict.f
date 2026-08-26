@@ -3,6 +3,27 @@
 ( <stddict.f> :; This file implements various dictionary introspection and modification
 words for easier metaprogramming. )
 
+( Print a dictionary entry's fields. )
+: INTROSPECT
+    r" link: " PRINT DUP @d .
+    r" code: " PRINT DUP 4 + @d .
+    r" flags: " PRINT DUP 9 + @b .
+    r" name: " PRINT 9 + PRINTLN
+;
+
+( Print an execution context's fields. )
+: PRINT_CTX
+    r" dSP_BASE: " PRINT DUP ctx.dSP_BASE FIELD @d .
+    r" rSP_BASE: " PRINT DUP ctx.rSP_BASE FIELD @d .
+    r" eSP_BASE: " PRINT DUP ctx.eSP_BASE FIELD @d .
+    r" lSP_BASE: " PRINT DUP ctx.lSP_BASE FIELD @d .
+
+    r" dSP: " PRINT DUP ctx.dSP FIELD @d .
+    r" rSP: " PRINT DUP ctx.rSP FIELD @d .
+    r" eSP: " PRINT DUP ctx.eSP FIELD @d .
+    r" lSP: " PRINT ctx.lSP FIELD @d .
+;
+
 ( WORDCOUNT returns the number of entries in the current dictionary. )
 : WORDCOUNT LATEST 0 BEGIN OVER WHILE 1 + SWAP @d SWAP REPEAT NIP ;
 
