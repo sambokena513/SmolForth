@@ -25,6 +25,33 @@
         } Task;
 )
 
+( small wrapper around rdtsc )
+: RDTSC
+    [
+        15 ,b -82 ,b -24 ,b 15 ,b
+        49 ,b 15 ,b -82 ,b -24 ,b
+        72 ,b -63 ,b -30 ,b 32 ,b
+        72 ,b 9 ,b -48 ,b 73 ,b
+        -119 ,b 6 ,b 73 ,b -125 ,b
+        -58 ,b 8 ,b
+    ]
+;
+
+QWORD_T 2 * TMPVAR calibration_timespec
+0 calibration_timespec !q
+1000000 calibration_timespec QWORD_T + !q
+
+( get the length of a second in timestamp counter cycles )
+: GET_STSCVAL
+    RDTSC ( start )
+    ( sys_nanosleep for 1ms )
+    calibration_timespec BASE + 35 #SYSCALL1 POP
+    RDTSC - ( elapsed = now - start )
+    940 * ( we don't multiply by 1000 here because we expect roughly 5.5% scheduler overhead. )
+    ( it's better for this to be off by being too short than to be off by being too long. )
+;
+
+QWORD_T VARIABLE STSCVAL GET_STSCVAL STSCVAL !q
 65536 CONSTANT MAX_TASKS
 56 CONSTANT TASK_SIZE
 
@@ -32,7 +59,7 @@ MACROS
 
 0 CONSTANT task.next
 4 CONSTANT task.prev
-8 CONSTANT task.timestamp ( value of rdtsc when we switched to the task )
+8 CONSTANT task.timestamp ( when we should switch tasks, ie. if rdtsc >= task.timestamp we yield )
 16 CONSTANT task.runnable
 20 CONSTANT task.ctx
 
@@ -117,6 +144,8 @@ and arrange for switching to its context to execute that xt with provided argume
 ;
 
 : STDCO_INIT
+    GET_STSCVAL STSCVAL !q
+
     ( initialize task slab so we can allocate tasks )
     TASK_SIZE MAX_TASKS MAKE_SLAB
     DUP -1 == IF
