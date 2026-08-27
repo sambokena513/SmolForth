@@ -50,8 +50,14 @@ They return nothing on success, and throw on failure. Note that a failure does n
 : READ_FULL
     FDBUF !d BEGIN
     OVER WHILE
-        2DUP FDBUF @d READ TUCK ( copy the val so our stack looks like [ count, written, buf, written ] )
-        + -ROT SWAP - SWAP ( add the return value to the buffer and subtract it from the count to write )
+        2DUP FDBUF @d READ
+        DUP IF ( if not EOF )
+            TUCK + -ROT SWAP - SWAP
+        ELSE
+            ( throw EINVAL on a read that got EOF, as our function's contract makes a
+            valid length argument be only one that never causes us to go past EOF )
+            -22 THROW 
+        THEN
     REPEAT
     2POP
 ;
