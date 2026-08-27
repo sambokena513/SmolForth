@@ -7,7 +7,7 @@ words for easier metaprogramming. )
 : INTROSPECT
     r" link: " PRINT DUP @d .
     r" code: " PRINT DUP 4 + @d .
-    r" flags: " PRINT DUP 9 + @b .
+    r" flags: " PRINT DUP 8 + @b .
     r" name: " PRINT 9 + PRINTLN
 ;
 
