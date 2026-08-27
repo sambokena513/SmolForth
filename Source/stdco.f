@@ -26,7 +26,7 @@
 )
 
 65536 CONSTANT MAX_TASKS
-56 CONSTANT TASK_SIZE ( since a task is an i32 cpu_budget, i32 runnable?, and ctx context. )
+56 CONSTANT TASK_SIZE
 
 MACROS
 
@@ -52,6 +52,30 @@ DWORD_T VARIABLE TASK_SLAB 0 TASK_SLAB !d
 DWORD_T VARIABLE RUNNABLE_LIST 0 RUNNABLE_LIST !d
 DWORD_T VARIABLE SUSPENDED_LIST 0 SUSPENDED_LIST !d
 DWORD_T VARIABLE CURR_TASK 0 CURR_TASK !d
+
+: UNLINK_TASK
+    DUP
+    DUP task.prev FIELD @d IF
+        ( task.prev.next = task.next )
+        DUP task.prev FIELD @d task.next FIELD
+        SWAP task.next FIELD @d SWAP !d
+    ELSE
+        ( head = task.next )
+        DUP task.runnable FIELD @d -1 == IF
+            task.next FIELD @d RUNNABLE_LIST !d
+        ELSE
+            task.next FIELD @d SUSPENDED_LIST !d
+        THEN
+    THEN
+
+    DUP task.next FIELD @d IF
+        ( task.next.prev = task.prev )
+        DUP task.next FIELD @d task.prev FIELD
+        SWAP task.prev FIELD @d SWAP !d
+    ELSE
+        POP
+    THEN
+;
 
 ( r | task -D- :; Given a task pointer, kill the task. )
 : END_TASK
