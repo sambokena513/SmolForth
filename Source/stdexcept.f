@@ -76,3 +76,5 @@ CREATE ENDTRY ALIAS THEN IMMEDIATE
     CATCH
     ENDTRY
 ;
+
+( Note that in our exceptions we consider 0 to be an invalid value, otherwise we wouldn't be able to implement DYN_CATCH properly. )
