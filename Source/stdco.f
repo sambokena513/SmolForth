@@ -3,16 +3,9 @@
 ( <stdco.f> :; Concurrency in the form of cooperative multitasking. )
 
 (
-    TODO: actually implement this;
-    it'll be a round-robin scheduler with timestamps for each task and a `runnable?` field
-    that if -1 means the scheduler is allowed to run the task, and if something else means the task
-    is waiting on IO from that fd, epoll won't be in the core scheduler, but rather be one of the tasks.
-
-    The epoll task will call epoll_wait with a timeout of 0 if there are still runnable tasks,
-    and with a timeout of -1 if there are no tasks to run except itself.
-
-    We also use EPOLLONESHOT, this lets async IO functions be a lot simpler as each function
-    simply registers an fd with epoll_ctl, and the epoll task calls epoll_wait.
+    This is a round-robin scheduler that tries to split a roughly 1 second long timeslot over every
+    runnable task. Tasks voluntarily call YIELD [ switch to next task ] or CHECKPOINT [ yield if needed ]
+    to give other tasks a chance.
 
     C-style reference for the Task struct:
 
@@ -21,8 +14,34 @@
             Task *prev;
             i64 timestamp;
             i32 runnable;
-            Context *ctx;
+            Context ctx;
         } Task;
+
+    We maintain two doubly-linked lists of tasks; one for runnable tasks and one for suspended tasks.
+    A task is runnable if its `runnable?` field is set to -1, otherwise the value of `runnable?` corresponds
+    to a file descriptor the task is waiting on. Note that this is for forwards compatibility with a privileged epoll task,
+    the core scheduler does not actually deal with resuming suspended tasks.
+
+    A task's `timestamp` is a TSC value that when reached, means the task has used its alloted run time. This is recalculated
+    and set whenever a task is switched *to*, and periodically compared against RDTSC to decide whether CHECKPOINT should make
+    the task yield or not.
+
+    Finally, each task has a `ctx` field holding an execution context associated with that task, note that this is stored *by value*,
+    it is not a pointer to an execution context, which makes the task struct in total 52 bytes with these fields and offsets:
+
+        0 - DWORD_T next
+        4 - DWORD_T prev
+        8 - QWORD_T timestamp
+        16 - DWORD_T runnable?
+        20 - DWORD_T ctx
+        20 - DWORD_T ctx.dSP_BASE
+        24 - DWORD_T ctx.rSP_BASE
+        28 - DWORD_T ctx.eSP_BASE
+        32 - DWORD_T ctx.lSP_BASE
+        36 - DWORD_T ctx.dSP
+        40 - DWORD_T ctx.rSP
+        44 - DWORD_T ctx.eSP
+        48 - DWORD_T ctx.lSP
 )
 
 ( small wrapper around rdtsc )
@@ -53,7 +72,7 @@ QWORD_T 2 * TMPVAR calibration_timespec
 
 QWORD_T VARIABLE STSCVAL GET_STSCVAL STSCVAL !q
 65536 CONSTANT MAX_TASKS
-56 CONSTANT TASK_SIZE
+52 CONSTANT TASK_SIZE
 
 MACROS
 
@@ -63,15 +82,15 @@ MACROS
 16 CONSTANT task.runnable
 20 CONSTANT task.ctx
 
-24 CONSTANT task.ctx.dSP_BASE
-28 CONSTANT task.ctx.rSP_BASE
-32 CONSTANT task.ctx.eSP_BASE
-36 CONSTANT task.ctx.lSP_BASE
+20 CONSTANT task.ctx.dSP_BASE
+24 CONSTANT task.ctx.rSP_BASE
+28 CONSTANT task.ctx.eSP_BASE
+32 CONSTANT task.ctx.lSP_BASE
 
-40 CONSTANT task.ctx.dSP
-44 CONSTANT task.ctx.rSP
-48 CONSTANT task.ctx.eSP
-52 CONSTANT task.ctx.lSP
+36 CONSTANT task.ctx.dSP
+40 CONSTANT task.ctx.rSP
+44 CONSTANT task.ctx.eSP
+48 CONSTANT task.ctx.lSP
 
 ENDMACROS
 
@@ -138,11 +157,12 @@ and arrange for switching to its context to execute that xt with provided argume
     TODO" switch to the next task in the task list"
 ;
 
-( r | -D- :; Call rdtsc and compare it to the current task's timestamp, if the difference crosses a threshold, call YIELD, else, do nothing. )
+( r | -D- :; Yield if needed. More performant than force-yielding using YIELD, use for CPU-bound tasks. )
 : CHECKPOINT
-    TODO" conditionally call YIELD"
+    RDTSC CURR_TASK @d task.timestamp FIELD @d < IF YIELD THEN
 ;
 
+( r | -D- :; Initialize all necessary scheduler state for task spawning and switching to work. )
 : STDCO_INIT
     GET_STSCVAL STSCVAL !q
 

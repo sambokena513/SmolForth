@@ -88,7 +88,7 @@ does not handle escape sequences. )
 ( REPL wrapper for ,b to make emitting bytes in string literals a bit easier. )
 : [,b] 
     WORD NUMBER? IF 
-        POP r" Not a number!" ABORT
+        POP /' " Not a number!" [ 10 ,b ] '/ ABORT
     ELSE
         ,b
     THEN
