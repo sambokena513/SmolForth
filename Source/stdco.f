@@ -260,7 +260,13 @@ and arrange for switching to its context to execute that xt with provided argume
     SWAP 1 +
 
     ( copy n items into the new task's data stack )
-    TODO" push our args into the task's data stack"
+    QWORD_T * RUNNABLE_LIST @d task.ctx.dSP_BASE FIELD @d +
+    DUP RUNNABLE_LIST @d task.ctx.dSP FIELD !d
+    BEGIN
+        DUP RUNNABLE_LIST @d task.ctx.dSP_BASE FIELD @d
+    < WHILE ( loop until we reach the task's stack base )
+        TUCK -8 + !q -8 +
+    REPEAT POP
 
     ( return the new task )
     RUNNABLE_LIST @d
