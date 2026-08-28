@@ -18,7 +18,7 @@
         } Task;
 
     We maintain two doubly-linked lists of tasks; one for runnable tasks and one for suspended tasks.
-    A task is runnable if its `runnable?` field is set to -1, otherwise the value of `runnable?` corresponds
+    A task is runnable if its `runnable` field is set to -1, otherwise the value of `runnable` corresponds
     to a file descriptor the task is waiting on. Note that this is for forwards compatibility with a privileged epoll task,
     the core scheduler does not actually deal with resuming suspended tasks.
 
@@ -32,7 +32,7 @@
         0 - DWORD_T next
         4 - DWORD_T prev
         8 - QWORD_T timestamp
-        16 - DWORD_T runnable?
+        16 - DWORD_T runnable
         20 - DWORD_T ctx
         20 - DWORD_T ctx.dSP_BASE
         24 - DWORD_T ctx.rSP_BASE
@@ -98,13 +98,36 @@ DWORD_T VARIABLE TASK_SLAB 0 TASK_SLAB !d
 DWORD_T VARIABLE RUNNABLE_LIST 0 RUNNABLE_LIST !d
 DWORD_T VARIABLE SUSPENDED_LIST 0 SUSPENDED_LIST !d
 DWORD_T VARIABLE CURR_TASK 0 CURR_TASK !d
+WORD_T VARIABLE RUNNABLE_COUNT 0 RUNNABLE_COUNT !w
 
+( Print out a task's fields. )
 : PRINT_TASK
     r" next: " PRINT DUP task.next FIELD @d .
     r" prev: " PRINT DUP task.prev FIELD @d .
     r" timestamp: " PRINT DUP task.timestamp FIELD @d .
     r" runnable: " PRINT DUP task.runnable FIELD @d .
     task.ctx FIELD PRINT_CTX
+;
+
+( save a few bytes on this string constant since its reused )
+HERE " ------------------" 0 ,b  MACROS CONSTANT PADDING_STRING ENDMACROS
+( Print out both task lists. )
+: DUMP_TASKS
+    r" -----RUNNABLE-----" PRINTLN
+    RUNNABLE_LIST @d BEGIN
+    DUP WHILE
+    DUP PRINT_TASK @d
+    PADDING_STRING PRINTLN
+    REPEAT POP
+    PADDING_STRING PRINTLN
+
+    r" -----SUSPENDED----" PRINTLN
+    SUSPENDED_LIST @d BEGIN
+    DUP WHILE
+    DUP PRINT_TASK @d
+    PADDING_STRING PRINTLN
+    REPEAT POP
+    PADDING_STRING PRINTLN
 ;
 
 ( r | task -D- )
@@ -116,8 +139,9 @@ DWORD_T VARIABLE CURR_TASK 0 CURR_TASK !d
         SWAP task.next FIELD @d SWAP !d
     ELSE
         ( head = task.next )
-        DUP task.runnable FIELD @d -1 == IF
+        DUP task.runnable FIELD @d TRUE == IF
             task.next FIELD @d RUNNABLE_LIST !d
+            RUNNABLE_COUNT @w -1 + RUNNABLE_COUNT !w
         ELSE
             task.next FIELD @d SUSPENDED_LIST !d
         THEN
@@ -134,12 +158,36 @@ DWORD_T VARIABLE CURR_TASK 0 CURR_TASK !d
 
 ( r | task -D- )
 : LINK_RUNNABLE
-    TODO" link a task into the runnable list"
+    RUNNABLE_LIST @d DUP IF
+        ( head.prev = new; new.next = head; )
+        2DUP task.prev FIELD !d
+        OVER task.next FIELD !d
+    ELSE
+        ( new.next = 0 )
+        POP
+        0 OVER task.next FIELD !d
+    THEN
+    ( head = new; new.prev = 0 )
+    RUNNABLE_LIST !d
+    0 SWAP task.prev FIELD !d
+
+    RUNNABLE_COUNT @w 1 + RUNNABLE_COUNT !w
 ;
 
 ( r | task -D- )
 : LINK_SUSPENDED
-    TODO" link a task into the suspended list"
+    SUSPENDED_LIST @d DUP IF
+        ( head.prev = new; new.next = head; )
+        2DUP task.prev FIELD !d
+        OVER task.next FIELD !d
+    ELSE
+        ( new.next = 0 )
+        POP
+        0 OVER task.next FIELD !d
+    THEN
+    ( head = new; new.prev = 0 )
+    SUSPENDED_LIST !d
+    0 SWAP task.prev FIELD !d
 ;
 
 ( r | task -D- :; Given a task pointer, kill the task. )
@@ -171,6 +219,14 @@ and arrange for switching to its context to execute that xt with provided argume
     TODO" allocate a new task, and set up its stacks such that the return stack starts with RUN_TASK"
 ;
 
+( r | task -D- Given a task pointer, set the task's timestamp and switch to it. )
+: SWITCH_TASK
+    RUNNABLE_COUNT @w STSCVAL /
+    1000 STSCVAL / 20 * MIN ( the maximum time we allow one task to run for is 20ms )
+    RDTSC + OVER task.timestamp !q
+    task.ctx FIELD SWITCH_CTX
+;
+
 ( r | fd -D- :; Suspend the current task and switch to another runnable one. If there are no runnable tasks to switch to, exit the scheduler. )
 : SUSPEND
     CURR_TASK @d TUCK
@@ -179,30 +235,26 @@ and arrange for switching to its context to execute that xt with provided argume
 
     task.next FIELD @d DUP IF
         DUP DUP UNLINK_TASK LINK_SUSPENDED
-        task.ctx FIELD
     ELSE
-        DUP UNLINK_TASK LINK_SUSPENDED RUNNABLE_LIST @d DUP IF
-            task.ctx FIELD
-        ELSE
-            POP MAIN_CTX
+        DUP UNLINK_TASK LINK_SUSPENDED RUNNABLE_LIST @d
+        DUP 0 == IF
+            POP MAIN_CTX SWITCH_CTX EXIT
         THEN
     THEN
-    SWITCH_CTX
+    SWITCH_TASK
 ;
 
 ( r | -D- :; Switch from the current task to the next one. )
 : YIELD
-    CURR_TASK @d task.next FIELD @d DUP IF
-        task.ctx FIELD
-    ELSE
-        POP RUNNABLE_LIST @d task.ctx FIELD
+    CURR_TASK @d task.next FIELD @d DUP 0 == IF
+        POP RUNNABLE_LIST @d
     THEN
-    SWITCH_CTX
+    SWITCH_TASK
 ;
 
 ( r | -D- :; Yield if needed. More performant than force-yielding using YIELD, use for CPU-bound tasks. )
 : CHECKPOINT
-    RDTSC CURR_TASK @d task.timestamp FIELD @d < IF YIELD THEN
+    RDTSC CURR_TASK @d task.timestamp FIELD @q < IF YIELD THEN
 ;
 
 ( r | -D- :; Initialize all necessary scheduler state for task spawning and switching to work. )
@@ -216,7 +268,8 @@ and arrange for switching to its context to execute that xt with provided argume
     THEN
     TASK_SLAB !d
 
-    ( initialize task lists )
+    ( initialize task lists and counts )
     0 RUNNABLE_LIST !d
     0 SUSPENDED_LIST !d
+    0 RUNNABLE_COUNT !w
 ;
