@@ -99,6 +99,15 @@ DWORD_T VARIABLE RUNNABLE_LIST 0 RUNNABLE_LIST !d
 DWORD_T VARIABLE SUSPENDED_LIST 0 SUSPENDED_LIST !d
 DWORD_T VARIABLE CURR_TASK 0 CURR_TASK !d
 
+: PRINT_TASK
+    r" next: " PRINT DUP task.next FIELD @d .
+    r" prev: " PRINT DUP task.prev FIELD @d .
+    r" timestamp: " PRINT DUP task.timestamp FIELD @d .
+    r" runnable: " PRINT DUP task.runnable FIELD @d .
+    task.ctx FIELD PRINT_CTX
+;
+
+( r | task -D- )
 : UNLINK_TASK
     DUP
     DUP task.prev FIELD @d IF
@@ -121,6 +130,16 @@ DWORD_T VARIABLE CURR_TASK 0 CURR_TASK !d
     ELSE
         POP
     THEN
+;
+
+( r | task -D- )
+: LINK_RUNNABLE
+    TODO" link a task into the runnable list"
+;
+
+( r | task -D- )
+: LINK_SUSPENDED
+    TODO" link a task into the suspended list"
 ;
 
 ( r | task -D- :; Given a task pointer, kill the task. )
@@ -152,9 +171,33 @@ and arrange for switching to its context to execute that xt with provided argume
     TODO" allocate a new task, and set up its stacks such that the return stack starts with RUN_TASK"
 ;
 
+( r | fd -D- :; Suspend the current task and switch to another runnable one. If there are no runnable tasks to switch to, exit the scheduler. )
+: SUSPEND
+    CURR_TASK @d TUCK
+
+    task.runnable FIELD !d
+
+    task.next FIELD @d DUP IF
+        DUP DUP UNLINK_TASK LINK_SUSPENDED
+        task.ctx FIELD
+    ELSE
+        DUP UNLINK_TASK LINK_SUSPENDED RUNNABLE_LIST @d DUP IF
+            task.ctx FIELD
+        ELSE
+            POP MAIN_CTX
+        THEN
+    THEN
+    SWITCH_CTX
+;
+
 ( r | -D- :; Switch from the current task to the next one. )
 : YIELD
-    TODO" switch to the next task in the task list"
+    CURR_TASK @d task.next FIELD @d DUP IF
+        task.ctx FIELD
+    ELSE
+        POP RUNNABLE_LIST @d task.ctx FIELD
+    THEN
+    SWITCH_CTX
 ;
 
 ( r | -D- :; Yield if needed. More performant than force-yielding using YIELD, use for CPU-bound tasks. )
