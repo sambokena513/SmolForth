@@ -78,3 +78,13 @@ which is where you should put your cleanup code, and then switches to that conte
 
 : dDEPTH dSP@ BASE SWAP - CTX @d ctx.dSP_BASE FIELD @d SWAP - 3 SWAP >> ;
 : rDEPTH rSP@ 8 + BASE SWAP - CTX @d ctx.rSP_BASE FIELD @d - 3 SWAP >> ;
+
+( r | val ctx -D- :; "Remote push", push a value to a context's data stack. )
+: >rD
+    ctx.dSP FIELD TUCK @d !q DUP @d 8 + SWAP !d
+;
+
+( r | val ctx -D- :; Like >rD but for the return stack. )
+: >rR
+    ctx.rSP FIELD TUCK @d -8 + !q DUP @d -8 + SWAP !d
+;

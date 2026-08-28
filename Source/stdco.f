@@ -116,18 +116,18 @@ HERE " ------------------" 0 ,b  MACROS CONSTANT PADDING_STRING ENDMACROS
     r" -----RUNNABLE-----" PRINTLN
     RUNNABLE_LIST @d BEGIN
     DUP WHILE
+    r" ----" DUP PRINT OVER PRINTNUM PRINTLN
     DUP PRINT_TASK @d
     PADDING_STRING PRINTLN
     REPEAT POP
-    PADDING_STRING PRINTLN
 
     r" -----SUSPENDED----" PRINTLN
     SUSPENDED_LIST @d BEGIN
     DUP WHILE
+    r" -----" DUP PRINT OVER PRINTNUM PRINTLN
     DUP PRINT_TASK @d
     PADDING_STRING PRINTLN
     REPEAT POP
-    PADDING_STRING PRINTLN
 ;
 
 ( r | task -D- )
@@ -168,7 +168,7 @@ HERE " ------------------" 0 ,b  MACROS CONSTANT PADDING_STRING ENDMACROS
         0 OVER task.next FIELD !d
     THEN
     ( head = new; new.prev = 0 )
-    RUNNABLE_LIST !d
+    DUP RUNNABLE_LIST !d
     0 SWAP task.prev FIELD !d
 
     RUNNABLE_COUNT @w 1 + RUNNABLE_COUNT !w
@@ -186,7 +186,7 @@ HERE " ------------------" 0 ,b  MACROS CONSTANT PADDING_STRING ENDMACROS
         0 OVER task.next FIELD !d
     THEN
     ( head = new; new.prev = 0 )
-    SUSPENDED_LIST !d
+    DUP SUSPENDED_LIST !d
     0 SWAP task.prev FIELD !d
 ;
 
@@ -213,17 +213,51 @@ set up the context so that inside it RUN_TASK called that task's entry point. )
     CURR_TASK @d END_TASK
 ;
 
-( r | argn .. arg2 arg1 argcount xt -D- task :; Given an xt and argument count, allocate memory for a new task and its stacks,
+( Pop n values from the data stack. )
+( r | argn .. arg2 arg1 count -D- )
+: nPOP
+    BEGIN
+    DUP WHILE
+        NIP -1 +
+    REPEAT POP
+;
+
+( r | argn .. arg2 arg1 argc xt -D- task | -1 :; Given an xt and argument count, allocate memory for a new task and its stacks,
 and arrange for switching to its context to execute that xt with provided arguments. )
 : SPAWN_TASK
-    TODO" allocate a new task, and set up its stacks such that the return stack starts with RUN_TASK"
+    TASK_SLAB @d SLAB_ALLOC DUP -1 == IF
+        2POP nPOP -1 EXIT
+    THEN
+    DUP LINK_RUNNABLE
+    TRUE SWAP task.runnable FIELD !d
+
+    ( 6 pages in total; 2 for dS, 2 for rS, 1 for eS, and 1 for lS )
+    6 pALLOC DUP -1 == IF
+        2POP nPOP RUNNABLE_LIST @d UNLINK_TASK -1 EXIT
+    THEN
+
+    RUNNABLE_LIST @d
+
+    2DUP task.ctx.dSP_BASE FIELD !d
+    2DUP task.ctx.dSP FIELD !d SWAP [ 4 4096 * ] LITERAL + SWAP
+
+    2DUP task.ctx.rSP_BASE FIELD !d
+    2DUP task.ctx.rSP FIELD !d
+
+    2DUP task.ctx.eSP_BASE FIELD !d
+    2DUP task.ctx.eSP FIELD !d SWAP 4096 + SWAP
+
+    2DUP task.ctx.lSP_BASE FIELD !d
+    TUCK task.ctx.lSP FIELD !d
+
+    TODO" push our args into the task's data stack, and set up its return stack"
 ;
 
 ( r | task -D- Given a task pointer, set the task's timestamp and switch to it. )
 : SWITCH_TASK
     RUNNABLE_COUNT @w STSCVAL /
     1000 STSCVAL / 20 * MIN ( the maximum time we allow one task to run for is 20ms )
-    RDTSC + OVER task.timestamp !q
+    RDTSC + OVER task.timestamp FIELD !q
     task.ctx FIELD SWITCH_CTX
 ;
 
