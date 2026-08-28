@@ -206,9 +206,11 @@ HERE " ------------------" 0 ,b  MACROS CONSTANT PADDING_STRING ENDMACROS
 ( r | xt -D- :; Wrapper function to run a task, when spawning a task we
 set up the context so that inside it RUN_TASK called that task's entry point. )
 : RUN_TASK
-    DYN_CATCH IF ( nonzero value means it threw )
+    DYN_CATCH DUP IF ( nonzero value means it threw )
         r" Uncaught exception in task with ID " PRINT CURR_TASK @d PRINTNUM r"  and exception value " PRINT .
-        r" Killing task." PRINT
+        r" Killing task." PRINTLN
+    ELSE
+        POP
     THEN
     CURR_TASK @d END_TASK
 ;
@@ -236,6 +238,7 @@ and arrange for switching to its context to execute that xt with provided argume
         2POP nPOP RUNNABLE_LIST @d UNLINK_TASK -1 EXIT
     THEN
 
+    ( initialize stacks )
     RUNNABLE_LIST @d
 
     2DUP task.ctx.dSP_BASE FIELD !d
@@ -250,7 +253,17 @@ and arrange for switching to its context to execute that xt with provided argume
     2DUP task.ctx.lSP_BASE FIELD !d
     TUCK task.ctx.lSP FIELD !d
 
-    TODO" push our args into the task's data stack, and set up its return stack"
+    ( push RUN_TASK's entry point to the new task's return stack )
+    [ ' RUN_TASK 4 + @d ] LITERAL BASE + SWAP task.ctx FIELD >rR
+
+    ( number of items to copy into the task's data stack is 1 + the arg count because of the xt arg to RUN_TASK )
+    SWAP 1 +
+
+    ( copy n items into the new task's data stack )
+    TODO" push our args into the task's data stack"
+
+    ( return the new task )
+    RUNNABLE_LIST @d
 ;
 
 ( r | task -D- Given a task pointer, set the task's timestamp and switch to it. )
@@ -258,6 +271,7 @@ and arrange for switching to its context to execute that xt with provided argume
     RUNNABLE_COUNT @w STSCVAL /
     1000 STSCVAL / 20 * MIN ( the maximum time we allow one task to run for is 20ms )
     RDTSC + OVER task.timestamp FIELD !q
+    DUP CURR_TASK !d
     task.ctx FIELD SWITCH_CTX
 ;
 
