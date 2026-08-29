@@ -190,16 +190,53 @@ HERE " ------------------" 0 ,b  MACROS CONSTANT PADDING_STRING ENDMACROS
     0 SWAP task.prev FIELD !d
 ;
 
+( r | task -D- Given a task pointer, set the task's timestamp and switch to it. )
+: SWITCH_TASK
+    RUNNABLE_COUNT @w STSCVAL /
+    1000 STSCVAL / 20 * MIN ( the maximum time we allow one task to run for is 20ms )
+    RDTSC + OVER task.timestamp FIELD !q
+    DUP CURR_TASK !d
+    task.ctx FIELD SWITCH_CTX
+;
+
+( r | fd -D- :; Suspend the current task and switch to another runnable one. If there are no runnable tasks to switch to, exit the scheduler. )
+: SUSPEND
+    CURR_TASK @d TUCK
+
+    task.runnable FIELD !d
+
+    task.next FIELD @d DUP IF
+        DUP DUP UNLINK_TASK LINK_SUSPENDED
+    ELSE
+        DUP UNLINK_TASK LINK_SUSPENDED RUNNABLE_LIST @d
+        DUP 0 == IF
+            POP MAIN_CTX SWITCH_CTX EXIT
+        THEN
+    THEN
+    SWITCH_TASK
+;
+
+( r | -D- :; Switch from the current task to the next one. )
+: YIELD
+    CURR_TASK @d task.next FIELD @d DUP 0 == IF
+        POP RUNNABLE_LIST @d
+    THEN
+    SWITCH_TASK
+;
+
+( r | -D- :; Yield if needed. More performant than force-yielding using YIELD, use for CPU-bound tasks. )
+: CHECKPOINT
+    RDTSC CURR_TASK @d task.timestamp FIELD @q < IF YIELD THEN
+;
+
 ( r | task -D- :; Given a task pointer, kill the task. )
 : END_TASK
-    TODO" free a task's entry in the task_slab, as well as its stacks, and unlink it from the task list it is a part of,
-          with a special case if the task we're killing is the same as the current task
-          (in which case it can't be done entirely atomically so it's more complex)"
-
-    CURR_TASK @d == IF
+    DUP CURR_TASK @d == IF
         TODO" edge case: task is the same one we're inside of"
     ELSE
-        TODO" normal case, can free task memory and unlink it"
+        DUP UNLINK_TASK
+        DUP task.ctx.dSP_BASE FIELD @d 6 SWAP pFREE
+        TASK_SLAB @d SLAB_FREE
     THEN
 ;
 
@@ -270,45 +307,6 @@ and arrange for switching to its context to execute that xt with provided argume
 
     ( return the new task )
     RUNNABLE_LIST @d
-;
-
-( r | task -D- Given a task pointer, set the task's timestamp and switch to it. )
-: SWITCH_TASK
-    RUNNABLE_COUNT @w STSCVAL /
-    1000 STSCVAL / 20 * MIN ( the maximum time we allow one task to run for is 20ms )
-    RDTSC + OVER task.timestamp FIELD !q
-    DUP CURR_TASK !d
-    task.ctx FIELD SWITCH_CTX
-;
-
-( r | fd -D- :; Suspend the current task and switch to another runnable one. If there are no runnable tasks to switch to, exit the scheduler. )
-: SUSPEND
-    CURR_TASK @d TUCK
-
-    task.runnable FIELD !d
-
-    task.next FIELD @d DUP IF
-        DUP DUP UNLINK_TASK LINK_SUSPENDED
-    ELSE
-        DUP UNLINK_TASK LINK_SUSPENDED RUNNABLE_LIST @d
-        DUP 0 == IF
-            POP MAIN_CTX SWITCH_CTX EXIT
-        THEN
-    THEN
-    SWITCH_TASK
-;
-
-( r | -D- :; Switch from the current task to the next one. )
-: YIELD
-    CURR_TASK @d task.next FIELD @d DUP 0 == IF
-        POP RUNNABLE_LIST @d
-    THEN
-    SWITCH_TASK
-;
-
-( r | -D- :; Yield if needed. More performant than force-yielding using YIELD, use for CPU-bound tasks. )
-: CHECKPOINT
-    RDTSC CURR_TASK @d task.timestamp FIELD @q < IF YIELD THEN
 ;
 
 ( r | -D- :; Initialize all necessary scheduler state for task spawning and switching to work. )

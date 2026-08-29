@@ -22,8 +22,7 @@
         IF 2POP 0 EXIT THEN
         1 + SWAP 1 + SWAP
     REPEAT
-    2POP
-    -1
+    @b SWAP @b ==
 ;
 CREATE ) 
 : (
@@ -81,7 +80,7 @@ since our general string parser does not handle escapes. )
 does not handle escape sequences. )
 : r"
     COMPILE /'
-    COMPILE "
+    COMPILE " ( " ( comment so that the editor doesn't think this is an unterminated string literal )
     COMPILE '/
 ; IMMEDIATE
 
