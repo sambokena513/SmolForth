@@ -348,3 +348,22 @@ and arrange for switching to its context to execute that xt with provided argume
     0 SUSPENDED_LIST !d
     0 RUNNABLE_COUNT !d
 ;
+
+(
+
+    A note on performance, during testing with this code:
+
+        4 VARIABLE Atask
+        4 VARIABLE Btask
+        : A BEGIN RDTSC Btask @d SWITCH_TASK RDTSC - . AGAIN ;
+        : B BEGIN Atask @d SWITCH_TASK AGAIN ;
+        0 ' A SPAWN_TASK Atask !d
+        0 ' B SPAWN_TASK Btask !d
+        Atask @d SWITCH_TASK
+
+    We got output of around 950 most of the time, this is for *two* context switches,
+    so the actual time is around 475 TSC cycles on the machine I tested it on, which corresponds to around 200ns.
+
+    So keep that in mind once you start adjusting the CYCLE_SPEED variable.
+
+)
