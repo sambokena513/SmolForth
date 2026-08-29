@@ -242,13 +242,16 @@ HERE " ------------------" 0 ,b  MACROS CONSTANT PADDING_STRING ENDMACROS
 ( r | task -D- :; Given a task pointer, kill the task. )
 : END_TASK
     DUP CURR_TASK @d == IF
-        RUNNABLE_COUNT @d -1 + PEEK IF
+        RUNNABLE_COUNT @d -1 + IF
             GET_NEXT_TASK
             [ COMP_START ] LITERAL BASE + OVER task.ctx FIELD >rR
             CURR_TASK @d OVER task.ctx FIELD >rD
             SWITCH_TASK
         ELSE
-            TODO" use the main context as a temporary continuation"
+            [ COMP_START ] LITERAL BASE + MAIN_CTX >rR
+            CURR_TASK @d MAIN_CTX >rD
+            0 CURR_TASK !d ( exit scheduler )
+            MAIN_CTX SWITCH_CTX
         THEN
     ELSE
         DUP UNLINK_TASK
