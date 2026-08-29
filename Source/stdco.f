@@ -3,7 +3,7 @@
 ( <stdco.f> :; Concurrency in the form of cooperative multitasking. )
 
 (
-    This is a round-robin scheduler that tries to split a roughly 1 second long timeslot over every
+    This is a round-robin scheduler that tries to split a configurable timeslot over every
     runnable task. Tasks voluntarily call YIELD [ switch to next task ] or CHECKPOINT [ yield if needed ]
     to give other tasks a chance.
 
@@ -70,7 +70,12 @@ QWORD_T 2 * TMPVAR calibration_timespec
     ( it's better for this to be off by being too short than to be off by being too long. )
 ;
 
-QWORD_T VARIABLE STSCVAL GET_STSCVAL STSCVAL !q
+( CYCLE_SPEED is the target time it should take to run every task once.
+We set this to 1 second by default for low overhead, but for more IO-heavy
+programs or ones that need to be more responsive you'd want this lower. Such as
+maybe 16.6ms for a game loop, or 1ms for a multi-client server. Note that this
+would of course increase scheduler overhead since YIELD is pretty expensive. )
+QWORD_T VARIABLE CYCLE_SPEED GET_STSCVAL CYCLE_SPEED !q
 65536 CONSTANT MAX_TASKS
 52 CONSTANT TASK_SIZE
 
@@ -192,8 +197,7 @@ HERE " ------------------" 0 ,b  MACROS CONSTANT PADDING_STRING ENDMACROS
 
 ( r | task -D- Given a task pointer, set the task's timestamp and switch to it. )
 : SWITCH_TASK
-    RUNNABLE_COUNT @w STSCVAL /
-    1000 STSCVAL / 20 * MIN ( the maximum time we allow one task to run for is 20ms )
+    RUNNABLE_COUNT @w CYCLE_SPEED @q /
     RDTSC + OVER task.timestamp FIELD !q
     DUP CURR_TASK !d
     task.ctx FIELD SWITCH_CTX
@@ -232,7 +236,12 @@ HERE " ------------------" 0 ,b  MACROS CONSTANT PADDING_STRING ENDMACROS
 ( r | task -D- :; Given a task pointer, kill the task. )
 : END_TASK
     DUP CURR_TASK @d == IF
-        TODO" edge case: task is the same one we're inside of"
+        DUP UNLINK_TASK
+        RUNNABLE_COUNT @w IF
+            TODO" use the next task as a temporary continuation"
+        ELSE
+            TODO" use the main context as a temporary continuation"
+        THEN
     ELSE
         DUP UNLINK_TASK
         DUP task.ctx.dSP_BASE FIELD @d 6 SWAP pFREE
@@ -311,7 +320,7 @@ and arrange for switching to its context to execute that xt with provided argume
 
 ( r | -D- :; Initialize all necessary scheduler state for task spawning and switching to work. )
 : STDCO_INIT
-    GET_STSCVAL STSCVAL !q
+    GET_STSCVAL CYCLE_SPEED !q
 
     ( initialize task slab so we can allocate tasks )
     TASK_SIZE MAX_TASKS MAKE_SLAB
