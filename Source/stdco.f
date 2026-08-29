@@ -103,7 +103,9 @@ DWORD_T VARIABLE TASK_SLAB 0 TASK_SLAB !d
 DWORD_T VARIABLE RUNNABLE_LIST 0 RUNNABLE_LIST !d
 DWORD_T VARIABLE SUSPENDED_LIST 0 SUSPENDED_LIST !d
 DWORD_T VARIABLE CURR_TASK 0 CURR_TASK !d
-WORD_T VARIABLE RUNNABLE_COUNT 0 RUNNABLE_COUNT !w
+( while technically the max task count is representable in 16 bits, it's not representable
+as a *signed* 16-bit integer, so RUNNABLE_COUNT is a DWORD_T. )
+DWORD_T VARIABLE RUNNABLE_COUNT 0 RUNNABLE_COUNT !d
 
 ( Print out a task's fields. )
 : PRINT_TASK
@@ -146,7 +148,7 @@ HERE " ------------------" 0 ,b  MACROS CONSTANT PADDING_STRING ENDMACROS
         ( head = task.next )
         DUP task.runnable FIELD @d TRUE == IF
             task.next FIELD @d RUNNABLE_LIST !d
-            RUNNABLE_COUNT @w -1 + RUNNABLE_COUNT !w
+            RUNNABLE_COUNT @d -1 + RUNNABLE_COUNT !d
         ELSE
             task.next FIELD @d SUSPENDED_LIST !d
         THEN
@@ -176,7 +178,7 @@ HERE " ------------------" 0 ,b  MACROS CONSTANT PADDING_STRING ENDMACROS
     DUP RUNNABLE_LIST !d
     0 SWAP task.prev FIELD !d
 
-    RUNNABLE_COUNT @w 1 + RUNNABLE_COUNT !w
+    RUNNABLE_COUNT @d 1 + RUNNABLE_COUNT !d
 ;
 
 ( r | task -D- )
@@ -197,7 +199,7 @@ HERE " ------------------" 0 ,b  MACROS CONSTANT PADDING_STRING ENDMACROS
 
 ( r | task -D- Given a task pointer, set the task's timestamp and switch to it. )
 : SWITCH_TASK
-    RUNNABLE_COUNT @w CYCLE_SPEED @q /
+    RUNNABLE_COUNT @d CYCLE_SPEED @q /
     RDTSC + OVER task.timestamp FIELD !q
     DUP CURR_TASK !d
     task.ctx FIELD SWITCH_CTX
@@ -220,12 +222,16 @@ HERE " ------------------" 0 ,b  MACROS CONSTANT PADDING_STRING ENDMACROS
     SWITCH_TASK
 ;
 
-( r | -D- :; Switch from the current task to the next one. )
-: YIELD
+( r | -D- task :; Assuming there is at least one runnable task, return the next one. )
+: GET_NEXT_TASK
     CURR_TASK @d task.next FIELD @d DUP 0 == IF
         POP RUNNABLE_LIST @d
     THEN
-    SWITCH_TASK
+;
+
+( r | -D- :; Switch from the current task to the next one. )
+: YIELD
+    GET_NEXT_TASK SWITCH_TASK
 ;
 
 ( r | -D- :; Yield if needed. More performant than force-yielding using YIELD, use for CPU-bound tasks. )
@@ -236,9 +242,11 @@ HERE " ------------------" 0 ,b  MACROS CONSTANT PADDING_STRING ENDMACROS
 ( r | task -D- :; Given a task pointer, kill the task. )
 : END_TASK
     DUP CURR_TASK @d == IF
-        DUP UNLINK_TASK
-        RUNNABLE_COUNT @w IF
-            TODO" use the next task as a temporary continuation"
+        RUNNABLE_COUNT @d -1 + PEEK IF
+            GET_NEXT_TASK
+            [ COMP_START ] LITERAL BASE + OVER task.ctx FIELD >rR
+            CURR_TASK @d OVER task.ctx FIELD >rD
+            SWITCH_TASK
         ELSE
             TODO" use the main context as a temporary continuation"
         THEN
@@ -281,7 +289,10 @@ and arrange for switching to its context to execute that xt with provided argume
 
     ( 6 pages in total; 2 for dS, 2 for rS, 1 for eS, and 1 for lS )
     6 pALLOC DUP -1 == IF
-        2POP nPOP RUNNABLE_LIST @d UNLINK_TASK -1 EXIT
+        2POP nPOP
+        RUNNABLE_LIST @d DUP
+        UNLINK_TASK TASK_SLAB @d SLAB_FREE
+        -1 EXIT
     THEN
 
     ( initialize stacks )
@@ -332,5 +343,5 @@ and arrange for switching to its context to execute that xt with provided argume
     ( initialize task lists and counts )
     0 RUNNABLE_LIST !d
     0 SUSPENDED_LIST !d
-    0 RUNNABLE_COUNT !w
+    0 RUNNABLE_COUNT !d
 ;

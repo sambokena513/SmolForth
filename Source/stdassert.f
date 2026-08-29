@@ -38,6 +38,17 @@ fully or partially not implemented, but you still want it to be callable,
 essentially this lets you act out the function's role manually,
 and then EXIT back to the caller without them noticing anything amiss. )
 : TODO"
-    COMPILE r"
+    COMPILE r" ( " ( )
     [ CLEAR WORD PANIC FIND ] LITERAL ECR32
 ; IMMEDIATE
+
+( similar to PANIC, but with slightly different output,
+prints out the address of the next instruction, and the top of the stack )
+: BREAKPOINT
+    r" BREAK at " STDASSERTF_PRINT rSP@ BASE SWAP - 8 + @q BASE SWAP - .
+    r" TOS: " STDASSERTF_PRINT PEEK
+    INTERPRET
+;
+
+( alternate name )
+CREATE *B ALIAS BREAKPOINT
