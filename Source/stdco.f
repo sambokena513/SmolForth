@@ -364,6 +364,9 @@ and arrange for switching to its context to execute that xt with provided argume
     We got output of around 950 most of the time, this is for *two* context switches,
     so the actual time is around 475 TSC cycles on the machine I tested it on, which corresponds to around 200ns.
 
+    This means that if we *only* switched tasks constantly without any actual work inside the task we could do 5 million task switches a second.
+    If we say that we can only take 5% of available CPU time that becomes 250000 tasks, which is much higher than the 65536 max tasks.
+
     So keep that in mind once you start adjusting the CYCLE_SPEED variable.
 
 )
