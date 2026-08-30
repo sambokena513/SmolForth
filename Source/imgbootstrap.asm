@@ -268,7 +268,7 @@ db "EXECUTE", 0
 
 
 ; REFILL calls sys_read to fill the TIB.
-; If sys_read fails we simply return without changing the TIB.
+; If sys_read fails we can't meaningfully continue so we call sys_exit.
 ; If we reach EOF then we open /dev/tty and change its fd to stdin,
 ; this is to make startup scripts simpler as you can \
 ; invoke the loader like `./loader < init.f` and the outer interpreter \
@@ -283,9 +283,17 @@ SYS_READ 0, rcx, r8
 test rax, rax
 jz .eof
 jns .success
+cmp rax, -11
+je .retry
+.refill_err:
 lea rsi, [rel refill_errmsg]
 SYS_WRITE rsi, refill_errmsg_size
-ret
+mov rdi, 74 ; EX_IOERR
+mov rax, 60
+syscall
+.retry:
+; should later make this call poll
+jmp REFILL
 .eof: ; if we hit EOF we assume we were reading a disk file and redirect stdin back to the terminal
 lea rax, [rel tib]
 movzx ecx, byte [rel tib_idx]
@@ -304,7 +312,7 @@ add al, byte [rel tib_idx]
 mov byte [rel tib_len], al ; tib_len = bytes_read + tib_idx
 ret
 refill_path db "/dev/tty", 0
-refill_errmsg db "sys_read failure in REFILL, you may exit the program with ctrl+c.", 0xd
+refill_errmsg db "fatal failure in REFILL", 0xA
 refill_errmsg_size equ $ - refill_errmsg
 REFILL_entry:
 dd EXECUTE_entry
