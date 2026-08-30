@@ -227,6 +227,16 @@ HERE " ------------------" 0 ,b  MACROS CONSTANT PADDING_STRING ENDMACROS
     SWITCH_TASK
 ;
 
+( r | task -D- :; Make a suspended task runnable once more. Note for any asynchronous IO scheduler,
+since we clear the fd field here, this means that you need to either also clear your own metadata on 
+what a task is waiting on, possibly deregistering fds with epoll_ctl for example, *or* maintain a separate
+data structure mapping task pointers to their fds and have async IO functions check that before calling SUSPEND. )
+: WAKE_TASK
+    DUP UNLINK_TASK 
+    DUP LINK_RUNNABLE
+    TRUE SWAP task.runnable FIELD !d
+;
+
 ( r | -D- :; Switch from the current task to the next one. )
 : YIELD
     GET_NEXT_TASK SWITCH_TASK
