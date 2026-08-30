@@ -1,0 +1,69 @@
+-------------------------------------------------------------------------------
+ISSUE: Poor support for file/library inclusion.
+
+PROPOSED FIX: Introduce an input buffer abstraction that couples a file descriptor with
+buffer state to allow words like REFILL or WORD to seamlessly work the same in
+included files and even nested includes.
+
+IMPLEMENTATION: Input buffer stack statically allocated in imgbootstrap.asm,
+TIB_IDX and TIB_LEN are now per-buffer, stdlib functions ENTER_BUFFER and
+LEAVE_BUFFER dynamically allocate backing memory for the buffer object, and
+push its pointer to the buffer stack.
+
+COMPLICATIONS: <bootstrap.fc> functions EXECF, LOAD, IDUMP, and SNAPSHOT
+currently depend on the single static buffer we currently have, this can be
+fixed by making them into macros and placing conforming implementations in the
+stdlib, this way users who are not including the stdlib can still save their
+image or load files the old way, and people using the stdlib get better
+versions of the functions and don't have the old ones taking up memory in the
+dictionary.
+
+NOTES: Buffers will be allocated with 1 page for each, this is a little
+wasteful considering we technically only need 255 bytes for the backing buffer
+and a few other fields that are all tiny, but if we initialized a slab for
+this we'd need to keep track of that separately and suddenly ENTER_BUFFER and
+LEAVE_BUFFER would no longer be as composable. Anyway, we have 1.5GB, of which
+the scheduler only takes like 3MB of, so I think we can spare a few pages for
+the buffers.
+
+EFFECTS: Additionally to fixing our library problem, it'll also make
+implementing an asynchronous version of REFILL and INTERPRET easier because
+we'll have a centralized interface (ENTER_BUFFER/LEAVE_BUFFER) to go through
+for reading input files, meaning that we can simply make that API open the
+files as nonblocking. This means the only hardcoded part has to be the setup
+for the first buffer.
+-------------------------------------------------------------------------------
+STATE: OPEN | PRIORITY: HIGH
+-------------------------------------------------------------------------------
+
+-------------------------------------------------------------------------------
+ISSUE: No support for command line arguments, currently programs have to be
+invoked like `echo "arg1 arg2" | ./program`.
+
+PROPOSED FIX: Image loader can copy all args after its filepath into the new
+image's data stack before calling the image entry point.
+-------------------------------------------------------------------------------
+STATE: OPEN | PRIORITY: LOW
+-------------------------------------------------------------------------------
+
+-------------------------------------------------------------------------------
+ISSUE: Though INTERPRET is spawned as a task, it is synchronous, and therefore
+does not play nice with other tasks meaning the user currently has to either
+turn off the interpreter when executing tasks concurrently, or constantly type
+YIELD into the interpreter.
+
+PROPOSED FIX: Make stdin nonblocking and then make the synchronous version of
+INTERPRET handle EAGAIN and retry while implementing a separate
+ASYNC_INTERPRET that yields on EAGAIN instead.
+
+COMPLICATIONS: Currently this would really mess with the input buffer and
+cause inconsistent behaviour in INTERPRET, we'll need to first implement and
+finish the input buffer abstraction for this to really be possible to get
+started on, also, a naive implementation of this would max out the CPU
+spin-waiting around EAGAIN on sys_read, so I'll need to think up something
+there, maybe just use sys_nanosleep in the synchronous version, and SUSPEND
+instead of YIELD in the async version together with a priviliged task that
+calls epoll_wait().
+-------------------------------------------------------------------------------
+STATE: OPEN | PRIORITY: MEDIUM
+-------------------------------------------------------------------------------
