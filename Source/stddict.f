@@ -41,10 +41,10 @@ words for easier metaprogramming. )
 
 ( __EXISTS? is a wrapper around FIND that returns whether a word matching a string
 given to it is in the dictionary. )
-: __EXISTS? FIND -1 == ~ ;
+: __EXISTS? FIND -1 <> ;
 
 ( __UNIQUE? takes a dictionary entry address, returns whether it is an alias of something else, or has a unique code body. )
-: __UNIQUE? 8 + @b DUP 16 | == ~ ;
+: __UNIQUE? 8 + @b DUP 4 | <> ;
 
 ( __FORGET takes a string pointer representing a word name
 and modifies the dictionary such that the word preceding it links

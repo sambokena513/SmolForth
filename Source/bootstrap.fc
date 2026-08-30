@@ -155,7 +155,7 @@ HERE // push here so we can patch latest_def later
 
 aINTERPS @d ,d // link
 26 ,d // code, placeholder pointer to GREET
-16 ,b // flags, 16 is ALIAS because currently the word has no unique body
+4 ,b // flags, 4 is ALIAS because currently the word has no unique body
 
 SWAP // put string pointer on top of stack
 
@@ -310,9 +310,9 @@ COMP_START LATEST 4 + !d IMMEDIATE
 
 // Unset LATEST's ALIAS flag if it is set.
 : UNIQUE
-    LATEST 8 + @b 16 &
+    LATEST 8 + @b 4 &
     [ 0 0BRANCH HERE ]
-        LATEST 8 + @b 16 ^ LATEST 8 + !b
+        LATEST 8 + @b 4 ^ LATEST 8 + !b
     [ DUP HERE - SWAP -4 + !d ]
 ;
 

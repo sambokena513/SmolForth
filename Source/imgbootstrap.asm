@@ -68,10 +68,7 @@ sub %1, r15
 %define DE_FLAGS 8
 %define DE_NAME 9
 
-; dictionary entry flags, note that NO_INTERPRET and NO_COMPILE are not recognized by the \
-; bootstrap version of the outer interpreter.
-%define NO_INTERPRET 0b00001000 ; error on interpretation attempt
-%define NO_COMPILE 0b00000100 ; error on compilation attempt
+; dictionary entry flags
 %define HIDDEN 0b00000010 ; FIND should skip this
 %define IMMEDIATE 0b00000001 ; outer interpreter should interpret this regardless of STATE
 
@@ -1256,53 +1253,31 @@ call PLUS
 I_0BRANCH .errnf ; if find returns -1 we error
 
 I_STATE
-I_0BRANCH .attempt_interp_word
+I_0BRANCH .interp_word
 
 ; attempt_comp_word
 call DUP ; - FIND
 I_FLAG IMMEDIATE
-I_0BRANCH .attempt_comp_word
-I_BRANCH .interp_word ; interpret if IMMEDIATE
-
-.attempt_comp_word:
-call DUP ; - FIND
-I_FLAG NO_COMPILE
 I_0BRANCH .comp_word
-I_BRANCH .errnc
-
+.interp_word: ; interpret if IMMEDIATE
+call EXECUTE
+I_AGAIN
 .comp_word:
 call ECR32
-I_AGAIN
-.attempt_interp_word:
-call DUP ; - FIND
-I_FLAG NO_INTERPRET
-I_0BRANCH .interp_word
-I_BRANCH .errni
-.interp_word:
-call EXECUTE
 I_AGAIN
 .number:
 call SWAP
 call POP ; WORD -
 I_STATE
-I_0BRANCH .interp_number
+I_0BRANCH INTERPRET
 ; comp_number
 call LITERAL
-.interp_number:
 I_AGAIN
 .errnf:
 call POP ; FIND -
 I_ERR i_errnf
-.errni:
-call POP ; FIND -
-I_ERR i_errni
-.errnc:
-call POP ; FIND -
-I_ERR i_errnc
 ret
 i_errnf db "error: FIND returned -1", 0xA, 0
-i_errni db "error: encountered NO_INTERPRET with STATE 0", 0xA, 0
-i_errnc db "error: encountered NO_COMPILE with STATE 1", 0xA, 0
 INTERPRET_entry:
 dd ABORT_entry
 dd INTERPRET
