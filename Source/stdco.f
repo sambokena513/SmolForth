@@ -111,7 +111,7 @@ DWORD_T VARIABLE RUNNABLE_COUNT 0 RUNNABLE_COUNT !d
 : PRINT_TASK
     r" next: " PRINT DUP task.next FIELD @d .
     r" prev: " PRINT DUP task.prev FIELD @d .
-    r" timestamp: " PRINT DUP task.timestamp FIELD @d .
+    r" timestamp: " PRINT DUP task.timestamp FIELD @q .
     r" runnable: " PRINT DUP task.runnable FIELD @d .
     task.ctx FIELD PRINT_CTX
 ;
@@ -205,28 +205,26 @@ HERE " ------------------" 0 ,b  MACROS CONSTANT PADDING_STRING ENDMACROS
     task.ctx FIELD SWITCH_CTX
 ;
 
-( r | fd -D- :; Suspend the current task and switch to another runnable one. If there are no runnable tasks to switch to, exit the scheduler. )
-: SUSPEND
-    CURR_TASK @d TUCK
-
-    task.runnable FIELD !d
-
-    task.next FIELD @d DUP IF
-        DUP DUP UNLINK_TASK LINK_SUSPENDED
-    ELSE
-        DUP UNLINK_TASK LINK_SUSPENDED RUNNABLE_LIST @d
-        DUP 0 == IF
-            POP MAIN_CTX SWITCH_CTX EXIT
-        THEN
-    THEN
-    SWITCH_TASK
-;
-
 ( r | -D- task :; Assuming there is at least one runnable task, return the next one. )
 : GET_NEXT_TASK
     CURR_TASK @d task.next FIELD @d DUP 0 == IF
         POP RUNNABLE_LIST @d
     THEN
+;
+
+( r | fd -D- :; Suspend the current task and switch to another runnable one. If there are no runnable tasks to switch to, exit the scheduler. )
+: SUSPEND
+    GET_NEXT_TASK SWAP
+
+    CURR_TASK @d
+    DUP UNLINK_TASK
+    DUP LINK_SUSPENDED
+    task.runnable FIELD !d
+
+    DUP 0 == IF
+        POP MAIN_CTX SWITCH_CTX EXIT
+    THEN
+    SWITCH_TASK
 ;
 
 ( r | -D- :; Switch from the current task to the next one. )
@@ -264,8 +262,8 @@ HERE " ------------------" 0 ,b  MACROS CONSTANT PADDING_STRING ENDMACROS
 set up the context so that inside it RUN_TASK called that task's entry point. )
 : RUN_TASK
     DYN_CATCH DUP IF ( nonzero value means it threw )
-        r" Uncaught exception in task with ID " PRINT CURR_TASK @d PRINTNUM r"  and exception value " PRINT .
-        r" Killing task." PRINTLN
+        r" Uncaught exception in task with ID <" PRINT CURR_TASK @d PRINTNUM
+        r" > and exception value <" PRINT PRINTNUM r" >, killing task." PRINTLN
     ELSE
         POP
     THEN

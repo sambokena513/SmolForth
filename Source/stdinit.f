@@ -33,6 +33,11 @@ first reset all important stdlib state before calling INTERPRET. )
     MACRO_INIT
     HEAP_INIT
     STDCO_INIT
+    0 ['] INTERPRET LITERAL SPAWN_TASK
+    DUP -1 == IF
+        r" FATAL: Could not allocate memory for REPL task." PRINTLN EXIT
+    THEN
     r" Welcome to SmolForth!" PRINTLN
-    INTERPRET
+    SWITCH_TASK
+    r" All tasks finished. Shutting down..." PRINTLN
 ;

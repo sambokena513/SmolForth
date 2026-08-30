@@ -67,6 +67,7 @@ since our general string parser does not handle escapes. )
 : /'
     0 COMPILE BRANCH HERE >C
     HERE
+    COMPILE [ ( so that users can do stuff like emit bytes inside string literals )
 ; IMMEDIATE
 
 ( Mark the end of a string literal. )
@@ -74,6 +75,7 @@ since our general string parser does not handle escapes. )
     0 ,b
     COMPILE THEN
     COMPILE LITERAL
+    ] ( back to compile mode after the string )
 ; IMMEDIATE
 
 ( Compiles a string constant into a definition,
@@ -82,13 +84,4 @@ does not handle escape sequences. )
     COMPILE /'
     COMPILE " ( " ( comment so that the editor doesn't think this is an unterminated string literal )
     COMPILE '/
-; IMMEDIATE
-
-( REPL wrapper for ,b to make emitting bytes in string literals a bit easier. )
-: [,b] 
-    WORD NUMBER? IF 
-        POP /' " Not a number!" [ 10 ,b ] '/ ABORT
-    ELSE
-        ,b
-    THEN
 ; IMMEDIATE
