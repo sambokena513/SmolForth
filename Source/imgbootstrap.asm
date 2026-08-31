@@ -278,19 +278,26 @@ db "EXECUTE", 0
 
 ; GETTERM opens /dev/tty and performs bookkeeping to make words like REFILL seamlessly start reading from it.
 ; If it fails, it calls sys_exit (unrecoverable since this is fundamentally a repl-driven language.).
-; Note that the terminal is nonblocking, this is necessary in order to implement asynchronous INTERPRET in the standard library.
+; Note that all input buffers are nonblocking, this is necessary in order to implement asynchronous INTERPRET in the standard library.
 GETTERM:
+mov r8d, dword [rel tib]
+resPTR r8
+mov byte [r8 + TIB_EOF_OFFSET], 0
+mov edi, dword [r8 + TIB_FD_OFFSET]
+mov rax, 3
+syscall
+
 lea rsi, [rel term_path]
 SYS_OPENAT AT_FDCWD, rsi, O_RDONLY | O_NONBLOCK, 0
 test rax, rax
 jns .success
-mov rdi, 74
+mov rdi, 74 ; EX_IOERR
 mov rax, 60
 syscall
 .success:
 mov rbx, rax
 SYS_DUP2 rbx, 0
-SYS_CLOSE rbx
+mov dword [r8 + TIB_FD_OFFSET], ebx
 ret
 term_path db "/dev/tty", 0
 GETTERM_entry:
