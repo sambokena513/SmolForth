@@ -66,14 +66,42 @@ global _start
 %define O_RDONLY 0
 %define O_WRONLY 1
 %define O_RDWR 2
+%define O_NONBLOCK 2048
+%define STDIN 0
+%define F_GETFL 3
+%define F_SETFL 4
 
 %define AT_FDCWD -100
 
 _start:
-  ; this file should map a 2GiB image into memory,
-  ; put the image base address in r15, set up the data stack pointer in r14,
-  ; and then call the image's entry point
+  ; This is the forth image loader. It's purpose is to map and read an fif executable into memory, and call its entry point.
 
+  ; before we do anything else, make stdin nonblocking since forth images depend on that
+
+  mov rsi, F_GETFL
+  mov rdi, STDIN
+  mov rax, 72
+  syscall
+  test rax, rax
+  jns .success_fcntl_read
+
+  SYS_WRITE errfcntlmsg, errfcntlmsg_size
+  jmp .exit
+
+  .success_fcntl_read:
+  or rax, O_NONBLOCK
+  mov rdx, rax
+  mov rsi, F_SETFL
+  mov rax, 72
+  syscall
+  test rax, rax
+  jns .success_fcntl
+
+  SYS_WRITE errfcntlmsg, errfcntlmsg_size
+  jmp .exit
+
+  .success_fcntl:
+  ; get image path from command line args
   mov rax, [rsp] ; argc
   cmp rax, 2 ; need at least one arg
   jl .no_arg
@@ -91,7 +119,7 @@ _start:
   jns .success_img_openat
 
   SYS_WRITE erropenatmsg, erropenatmsg_size ; print err message
-  jmp .close_img
+  jmp .exit
 
   .success_img_openat:
   mov [rel img_fd], rax
@@ -176,6 +204,8 @@ errfstatmsg db "exiting due to fstat failing", 0xA
 errfstatmsg_size equ $ - errfstatmsg
 errreadmsg db "exiting due to read failing", 0xA
 errreadmsg_size equ $ - errreadmsg
+errfcntlmsg db "exiting due to fcntl failing", 0xA
+errfcntlmsg_size equ $ - errfcntlmsg
 section .bss
 filepath_ptr resq 1 ; filepath of the image
 img_fd resq 1 ; to hold the file descriptor of img

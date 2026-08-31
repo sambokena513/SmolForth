@@ -86,6 +86,8 @@ sub %1, r15
 %define O_NONBLOCK 2048
 %define AT_FDCWD -100
 %define EAGAIN 11
+%define POLLIN 1
+%define STDIN 0
 
 ; header: 20 bytes
 db "FIF", 0 ; magic
@@ -371,8 +373,16 @@ cmp rax, -EAGAIN
 je .retry
 ret
 .retry:
-; todo, call poll here instead of immediately retrying
+mov rdx, -1 ; block until fd becomes ready
+mov rsi, 1
+lea rdi, [rel .poll_struct]
+mov rax, 7
+syscall
 jmp REFILL
+.poll_struct:
+dd STDIN ; fd
+dw POLLIN ; events
+dw 0 ; revents
 REFILL_entry:
 dd READTIB_entry
 dd REFILL
@@ -382,6 +392,7 @@ db "REFILL", 0
 
 ; WORD parses the next word in the TIB,
 ; and returns its image-relative address
+; TODO: rewrite this to not rely on a specific buffer, this is now the last function that hasn't caught up to the new architecture.
 WORD_:
 ; / setup
 movzx eax, byte [rel tib_idx]
