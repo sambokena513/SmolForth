@@ -78,7 +78,9 @@ sub %1, r15
 %define O_RDONLY 0
 %define O_WRONLY 1
 %define O_RDWR 2
+%define O_NONBLOCK 2048
 %define AT_FDCWD -100
+%define EAGAIN 11
 
 ; header: 20 bytes
 db "FIF", 0 ; magic
@@ -87,7 +89,7 @@ dd dstck_start
 dd rstck_start
 dd HERE_START
 
-; entry point, image executes one word and then exits, for multiple words the user can type INTERPRET
+; entry point
 call INTERPRET
 ret
 
@@ -267,6 +269,24 @@ db 0
 db "EXECUTE", 0
 
 
+; GETTERM opens /dev/tty and performs bookkeeping to make words like REFILL seamlessly start reading from it.
+; If it fails, it calls sys_exit (unrecoverable since this is fundamentally a repl-driven language.).
+; Note that the terminal is nonblocking, this is necessary in order to implement asynchronous INTERPRET in the standard library.
+GETTERM:
+lea rsi, [rel term_path]
+SYS_OPENAT AT_FDCWD, rsi, O_RDONLY | O_NONBLOCK, 0
+mov rbx, rax
+SYS_DUP2 rbx, 0
+SYS_CLOSE rbx
+ret
+term_path db "/dev/tty", 0
+GETTERM_entry:
+dd EXECUTE_entry
+dd GETTERM
+db 0
+db "GETTERM", 0
+
+
 ; REFILL calls sys_read to fill the TIB.
 ; If sys_read fails we can't meaningfully continue so we call sys_exit.
 ; If we reach EOF then we open /dev/tty and change its fd to stdin,
@@ -274,7 +294,7 @@ db "EXECUTE", 0
 ; invoke the loader like `./loader < init.f` and the outer interpreter \
 ; will consume that file before switching to the terminal.
 REFILL:
-lea rcx, [rel tib]
+lea rcx, [rel initial_tib]
 mov r8, TIB_MAX_SIZE
 movzx r9, byte [rel tib_idx]
 add rcx, r9
@@ -283,7 +303,7 @@ SYS_READ 0, rcx, r8
 test rax, rax
 jz .eof
 jns .success
-cmp rax, -11
+cmp rax, -EAGAIN
 je .retry
 .refill_err:
 lea rsi, [rel refill_errmsg]
@@ -301,21 +321,16 @@ add rax, rcx
 mov byte [rax], 10 ; insert a newline after the final token to finish the file
 add byte [rel tib_idx], 1
 add byte [rel tib_len], 1
-lea rsi, [rel refill_path]
-SYS_OPENAT AT_FDCWD, rsi, O_RDONLY, 0
-mov rbx, rax
-SYS_DUP2 rbx, 0
-SYS_CLOSE rbx
+call GETTERM
 ret
 .success:
 add al, byte [rel tib_idx] 
 mov byte [rel tib_len], al ; tib_len = bytes_read + tib_idx
 ret
-refill_path db "/dev/tty", 0
 refill_errmsg db "fatal failure in REFILL", 0xA
 refill_errmsg_size equ $ - refill_errmsg
 REFILL_entry:
-dd EXECUTE_entry
+dd GETTERM_entry
 dd REFILL
 db 0
 db "REFILL", 0
@@ -331,7 +346,7 @@ mov byte [rel scan_start], al ; so we can restore state later in case we need to
 
 ; / load args
 .restart:
-lea rsi, [rel tib]
+lea rsi, [rel initial_tib]
 mov dl, ' ' ; space
 mov cl, 0xA ; newline
 jmp .skip_whitespace_start
@@ -410,7 +425,7 @@ db "WORD", 0
 CLEAR:
 movzx eax, byte [rel tib_idx]
 movzx edi, byte [rel tib_len]
-lea rsi, [rel tib]
+lea rsi, [rel initial_tib]
 xor rcx, rcx
 
 .loop:
@@ -1166,11 +1181,7 @@ syscall
 mov byte [rel tib_len], 0
 mov byte [rel tib_idx], 0
 
-lea rsi, [rel refill_path]
-SYS_OPENAT AT_FDCWD, rsi, O_RDONLY, 0
-mov rbx, rax
-SYS_DUP2 rbx, 0
-SYS_CLOSE rbx
+call GETTERM
 ret
 ABORT_entry:
 dd BRANCH_entry
@@ -1182,8 +1193,6 @@ db "ABORT", 0
 
 ; var offsets
 %define I_O_STATE 8
-%define I_O_TIBIDX 14
-%define I_O_TIBLEN 15
 
 ; push a constant, don't change this, user code depends on it being 17 bytes
 %macro I_CONST 1
@@ -1300,9 +1309,13 @@ here dd HERE_START ; also image-relative
 state db 0 ; 0 = interpreting, 1 = compiling
 scan_start db 0 ; used to restore WORD parse state, copy of tib_idx
 compile_start dd 0 ; will be used later for colon definitions to patch code pointers, currently does nothing
-tib_idx db 0 ; current point in tib we're at, if add tib to this and resPTR it you get a valid string pointer
-tib_len db 0 ; current amount of bytes in tib
-tib times TIB_MAX_SIZE db 0 ; no delimiter on this string, be very careful about bounds checks!
+tib dd initial_tib
+
+initial_tib times TIB_MAX_SIZE db 0 ; no delimiter on this string, be very careful about bounds checks!
+tib_idx db 0 ; what point the parser is at inside it
+tib_len db 0 ; how much has valid data
+dd 0 ; fd, 0 for the initial tib since that one already started as stdin
+dd 0 ; parent buf
 
 dstck_start times 2048 dq 0 ; start point for data stack, reserve 16KB
 rstck_start: ; start point for return stack, grows downward into the same 16KB

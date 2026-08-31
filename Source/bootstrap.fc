@@ -194,7 +194,7 @@ $DEFINITION_END
 
 HERE aINTERPS 10 + !d
     ]
-        aINTERPS 10 +
+        [ aINTERPS 10 + ] LITERAL
     [
 -61 ,b CREATE aCOMP_START 0 aINTERPS @d 8 + !b
 aINTERPS 10 + @d aINTERPS @d 4 + !d
@@ -210,7 +210,7 @@ aCOMP_START @d aINTERPS @d 4 + !d
 
 HERE aCOMP_START !d
     ]
-        aINTERPS @d
+        [ aINTERPS ] LITERAL @d
     [
 -61 ,b CREATE LATEST 0 aINTERPS @d 8 + !b
 COMP_START aINTERPS @d 4 + !d
@@ -292,11 +292,15 @@ COMP_START LATEST 4 + !d
 COMP_START LATEST 4 + !d IMMEDIATE
 
 // With these words we round out the set of words for manipulating interpreter state.
-: aSTATE aINTERPS 8 + ;
-: aSCAN_START aINTERPS 9 + ;
-: aTIB_IDX aINTERPS 14 + ;
-: aTIB_LEN aINTERPS 15 + ;
-: aTIB aINTERPS 16 + ;
+: aSTATE [ aINTERPS 8 + ] LITERAL ;
+: aSCAN_START [ aINTERPS 9 + ] LITERAL ;
+// aTIB is the address of the variable storing \
+// a pointer to the active input buffer \
+// While TIB is a pointer to the active buffer.
+: aTIB [ aINTERPS 14 + ] LITERAL ;
+: TIB aTIB @d ;
+: aTIB_IDX TIB 255 + ;
+: aTIB_LEN TIB 256 + ;
 : STATE aSTATE @b ;
 : SCAN_START aSCAN_START @b ;
 : TIB_IDX aTIB_IDX @b ;

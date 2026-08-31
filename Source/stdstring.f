@@ -49,7 +49,7 @@ this *is* the file that implements them, and we cannot use comments until they e
         TSELF
     THEN
 
-    TIB_IDX 255 & aTIB + @b
+    TIB_IDX 255 & TIB + @b
     TIB_IDX 1 + aTIB_IDX !b
 ;
 
