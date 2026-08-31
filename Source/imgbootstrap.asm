@@ -74,6 +74,8 @@ sub %1, r15
 
 %define TIB_MAX_SIZE 255 ; 255 instead of 256 so that we can store the current size in one byte
 %define TIB_MAX_IDX 254
+%define TIB_IDX_OFFSET TIB_MAX_SIZE
+%define TIB_LEN_OFFSET TIB_IDX_OFFSET + 1
 
 %define O_RDONLY 0
 %define O_WRONLY 1
@@ -423,9 +425,10 @@ db "WORD", 0
 ; CLEAR copies everything from the current tib_idx up until tib_len \
 ; to the start of TIB and sets tib_idx to 0
 CLEAR:
-movzx eax, byte [rel tib_idx]
-movzx edi, byte [rel tib_len]
-lea rsi, [rel initial_tib]
+mov esi, dword [rel tib]
+resPTR rsi
+movzx eax, byte [rsi + TIB_IDX_OFFSET]
+movzx edi, byte [rsi + TIB_LEN_OFFSET]
 xor rcx, rcx
 
 .loop:
@@ -440,8 +443,8 @@ inc rcx
 jmp .loop
 
 .exit:
-mov byte [rel tib_idx], 0
-mov byte [rel tib_len], cl
+mov byte [rsi + TIB_IDX_OFFSET], 0
+mov byte [rsi + TIB_LEN_OFFSET], cl
 ret
 CLEAR_entry:
 dd WORD__entry
