@@ -214,14 +214,13 @@ HERE " ------------------" 0 ,b  MACROS CONSTANT PADDING_STRING ENDMACROS
 
 ( r | fd -D- :; Suspend the current task and switch to another runnable one. If there are no runnable tasks to switch to, exit the scheduler. )
 : SUSPEND
-    GET_NEXT_TASK SWAP
-
     CURR_TASK @d
     DUP UNLINK_TASK
+    GET_NEXT_TASK >C
     DUP LINK_SUSPENDED
     task.runnable FIELD !d
 
-    DUP 0 == IF
+    C> DUP 0 == IF
         POP MAIN_CTX SWITCH_CTX EXIT
     THEN
     SWITCH_TASK
