@@ -76,6 +76,9 @@ sub %1, r15
 %define TIB_MAX_IDX 254
 %define TIB_IDX_OFFSET TIB_MAX_SIZE
 %define TIB_LEN_OFFSET TIB_IDX_OFFSET + 1
+%define TIB_FD_OFFSET TIB_LEN_OFFSET + 1
+%define TIB_EOF_OFFSET TIB_FD_OFFSET + 4
+%define TIB_PARENT_OFFSET TIB_EOF_OFFSET + 1
 
 %define O_RDONLY 0
 %define O_WRONLY 1
@@ -277,6 +280,12 @@ db "EXECUTE", 0
 GETTERM:
 lea rsi, [rel term_path]
 SYS_OPENAT AT_FDCWD, rsi, O_RDONLY | O_NONBLOCK, 0
+test rax, rax
+jns .success
+mov rdi, 74
+mov rax, 60
+syscall
+.success:
 mov rbx, rax
 SYS_DUP2 rbx, 0
 SYS_CLOSE rbx
@@ -289,50 +298,83 @@ db 0
 db "GETTERM", 0
 
 
-; REFILL calls sys_read to fill the TIB.
-; If sys_read fails we can't meaningfully continue so we call sys_exit.
-; If we reach EOF then we open /dev/tty and change its fd to stdin,
-; this is to make startup scripts simpler as you can \
-; invoke the loader like `./loader < init.f` and the outer interpreter \
-; will consume that file before switching to the terminal.
-REFILL:
-lea rcx, [rel initial_tib]
-mov r8, TIB_MAX_SIZE
-movzx r9, byte [rel tib_idx]
-add rcx, r9
-sub r8, r9
-SYS_READ 0, rcx, r8
+; READTIB calls sys_read to fill the TIB and returns the number of bytes read. 
+; On EAGAIN it returns -EAGAIN, and on other errors it exits with EX_IOERR.
+; On EOF it fills in one extra newline, and on a second EOF it attempts to either pop \
+; the current buffer, or if this is the top buffer, replace it with a terminal using GETTERM.
+READTIB:
+mov esi, dword [rel tib]
+resPTR rsi
+
+movzx edx, byte [rsi + TIB_LEN_OFFSET]
+neg rdx
+add rdx, TIB_MAX_SIZE
+
+movzx ecx, byte [rsi + TIB_IDX_OFFSET]
+add rsi, rcx
+
+mov rdi, 0
+mov rax, 0
+syscall
+mov esi, dword [rel tib]
+resPTR rsi
+
 test rax, rax
 jz .eof
 jns .success
 cmp rax, -EAGAIN
-je .retry
-.refill_err:
-lea rsi, [rel refill_errmsg]
-SYS_WRITE rsi, refill_errmsg_size
-mov rdi, 74 ; EX_IOERR
+je .eagain
+mov rdi, 74
 mov rax, 60
 syscall
-.retry:
-; should later make this call poll
-jmp REFILL
-.eof: ; if we hit EOF we assume we were reading a disk file and redirect stdin back to the terminal
-lea rax, [rel tib]
-movzx ecx, byte [rel tib_idx]
-add rax, rcx
-mov byte [rax], 10 ; insert a newline after the final token to finish the file
-add byte [rel tib_idx], 1
-add byte [rel tib_len], 1
+.eagain:
+dPUSH -EAGAIN
+ret
+.eof:
+cmp byte [rsi + TIB_EOF_OFFSET], 0
+jne .second_eof
+add byte [rsi + TIB_LEN_OFFSET], 1
+mov byte [rsi + TIB_EOF_OFFSET], 1
+movzx ecx, byte [rsi + TIB_IDX_OFFSET]
+add rsi, rcx
+mov byte [rsi], 10
+dPUSH 1 ; 1 instead of 0 because we "read" (injected) a newline
+ret
+.second_eof:
+cmp dword [rsi + TIB_PARENT_OFFSET], 0
+jne .popbuf
 call GETTERM
+dPUSH 0
+ret
+.popbuf:
+mov eax, dword [rel popbufxt]
+dPUSH rax
+call EXECUTE
+dPUSH 0
 ret
 .success:
-add al, byte [rel tib_idx] 
-mov byte [rel tib_len], al ; tib_len = bytes_read + tib_idx
+add byte [rsi + TIB_LEN_OFFSET], al
+dPUSH rax
 ret
-refill_errmsg db "fatal failure in REFILL", 0xA
-refill_errmsg_size equ $ - refill_errmsg
-REFILL_entry:
+READTIB_entry:
 dd GETTERM_entry
+dd READTIB
+db 0
+db "READTIB", 0
+
+
+; REFILL is a wrapper around READTIB that makes it behave synchronously
+REFILL:
+call READTIB
+dPOP rax
+cmp rax, -EAGAIN
+je .retry
+ret
+.retry:
+; todo, call poll here instead of immediately retrying
+jmp REFILL
+REFILL_entry:
+dd READTIB_entry
 dd REFILL
 db 0
 db "REFILL", 0
@@ -1180,11 +1222,19 @@ jmp .loop
 mov rax, 1
 mov rdi, 1
 syscall
+cmp rax, rdx ; for parity with stdlib's PANIC we have the same behaviour of EX_IOERR on partial write or failure
+je .success
+mov rdi, 74
+mov rax, 60
+syscall
+.success:
 
-mov byte [rel tib_len], 0
-mov byte [rel tib_idx], 0
+mov esi, [rel tib]
+resPTR rsi
+mov byte [rsi + TIB_IDX_OFFSET], 0
+mov byte [rsi + TIB_LEN_OFFSET], 0
 
-call GETTERM
+call GETTERM ; replace current buffer with terminal
 ret
 ABORT_entry:
 dd BRANCH_entry
@@ -1245,7 +1295,7 @@ I_AGAIN
 %endmacro
 
 ; push the value of a dict entry's flag
-; note that this does not shift, 
+; note that this does not shift,
 ; so if the flag is on the third bit for example \
 ; and is set you get 4, not 1
 %macro I_FLAG 1
@@ -1309,16 +1359,23 @@ db "INTERPRET", 0
 
 latest_def dd INTERPRET_entry ; image-relative address, resPTR it before dereferencing!
 here dd HERE_START ; also image-relative
-state db 0 ; 0 = interpreting, 1 = compiling
+state db 0 ; 0 = interpreting, -1 = compiling
 scan_start db 0 ; used to restore WORD parse state, copy of tib_idx
-compile_start dd 0 ; will be used later for colon definitions to patch code pointers, currently does nothing
-tib dd initial_tib
+compile_start dd 0 ; used by colon and semicolon to patch code pointers
+tib dd initial_tib ; address of current input buffer, historically named TIB despite it not necessarily being a terminal
 
-initial_tib times TIB_MAX_SIZE db 0 ; no delimiter on this string, be very careful about bounds checks!
-tib_idx db 0 ; what point the parser is at inside it
+; popbufxt is the xt of the stdlib-provided function for exiting an input buffer and cleaning up relevant resources
+; it starts as -1000 to ensure that EXECUTE on it before being set by the stdlib will segfault
+popbufxt dd -1000
+
+; we statically allocate the first buffer here in the image, other ones are dynamically allocated by the stdlib
+initial_tib times TIB_MAX_SIZE db 0
+
+tib_idx db 0 ; what point the parser is at inside the buffer
 tib_len db 0 ; how much has valid data
 dd 0 ; fd, 0 for the initial tib since that one already started as stdin
-dd 0 ; parent buf
+db 0 ; eof? 0 normally, set to 1 after a read returns EOF
+dd 0 ; parent buf, 0 for the initial buffer
 
 dstck_start times 2048 dq 0 ; start point for data stack, reserve 16KB
 rstck_start: ; start point for return stack, grows downward into the same 16KB
