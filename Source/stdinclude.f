@@ -24,7 +24,7 @@ ENDMACROS
 
 ( r | filepath -D- err? :; Open a file, allocate and initialize an input buffer for it, and switch the active buffer to that one. )
 : ENTER_FILE
-    0 SWAP OVER SWAP BASE + OPEN
+    0 SWAP 2048 SWAP BASE + OPEN
 
     1 pALLOC DUP -1 == IF EXIT THEN
 
