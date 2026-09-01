@@ -292,16 +292,14 @@ COMP_START LATEST 4 + !d IMMEDIATE
 
 // With these words we round out the set of words for manipulating interpreter state.
 : aSTATE [ aINTERPS 8 + ] LITERAL ;
-: aSCAN_START [ aINTERPS 9 + ] LITERAL ;
 // aTIB is the address of the variable storing \
 // a pointer to the active input buffer \
 // While TIB is a pointer to the active buffer.
-: aTIB [ aINTERPS 14 + ] LITERAL ;
+: aTIB [ aINTERPS 13 + ] LITERAL ;
 : TIB aTIB @d ;
 : aTIB_IDX TIB 255 + ;
 : aTIB_LEN TIB 256 + ;
 : STATE aSTATE @b ;
-: SCAN_START aSCAN_START @b ;
 : TIB_IDX aTIB_IDX @b ;
 : TIB_LEN aTIB_LEN @b ;
 

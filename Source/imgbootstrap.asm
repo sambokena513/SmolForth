@@ -1356,8 +1356,6 @@ call AND_
 INTERPRET:
 call WORD_
 call DUP
-call DOT
-call DUP
 call NUMBERq
 I_0BRANCH .number
 call POP ; pop NUMBER?'s placeholder value
