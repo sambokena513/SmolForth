@@ -286,19 +286,21 @@ mov byte [r8 + TIB_EOF_OFFSET], 0
 mov edi, dword [r8 + TIB_FD_OFFSET]
 mov rax, 3
 syscall
+test rax, rax
+js .fatal
 
 lea rsi, [rel term_path]
 SYS_OPENAT AT_FDCWD, rsi, O_RDONLY | O_NONBLOCK, 0
 test rax, rax
-jns .success
+js .fatal
+mov dword [r8 + TIB_FD_OFFSET], eax
+ret
+
+.fatal:
 mov rdi, 74 ; EX_IOERR
 mov rax, 60
 syscall
-.success:
-mov rbx, rax
-SYS_DUP2 rbx, 0
-mov dword [r8 + TIB_FD_OFFSET], ebx
-ret
+
 term_path db "/dev/tty", 0
 GETTERM_entry:
 dd EXECUTE_entry
@@ -320,11 +322,13 @@ movzx edx, byte [rsi + TIB_LEN_OFFSET]
 neg rdx
 add rdx, TIB_MAX_SIZE
 
+; read the fd associated with current input buffer
+mov edi, [rsi + TIB_FD_OFFSET]
+
 ; start appending after tib_len
 movzx ecx, byte [rsi + TIB_LEN_OFFSET]
 add rsi, rcx
 
-mov rdi, 0
 mov rax, 0
 syscall
 mov esi, dword [rel tib]
