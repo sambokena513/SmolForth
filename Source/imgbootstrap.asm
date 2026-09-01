@@ -307,7 +307,7 @@ db 0
 db "GETTERM", 0
 
 
-; READTIB calls sys_read to fill the TIB and returns the number of bytes read. 
+; READTIB calls sys_read to fill the TIB and returns the number of bytes read.
 ; On EAGAIN it returns -EAGAIN, and on other errors it exits with EX_IOERR.
 ; On EOF it fills in one extra newline, and on a second EOF it attempts to either pop \
 ; the current buffer, or if this is the top buffer, replace it with a terminal using GETTERM.
@@ -397,86 +397,109 @@ db 0
 db "REFILL", 0
 
 
+; WORD_START advances the parsing cursor until the first non-whitespace character,
+; and then returns the index of that character. Note that like WORD, WORD_START may
+; invalidate pointers into the current TIB if it ends up calling CLEAR.
+WORD_START:
+mov esi, [rel tib]
+resPTR rsi
+
+movzx edi, byte [rsi + TIB_IDX_OFFSET]
+movzx edx, byte [rsi + TIB_LEN_OFFSET]
+
+mov bl, 32
+mov cl, 10
+
+.loop:
+cmp dil, dl
+je .out_of_input
+
+mov al, byte [rsi + rdi]
+cmp al, bl
+je .skip
+cmp al, cl
+jne .end
+.skip:
+inc dil
+jmp .loop
+
+.end:
+mov byte [rsi + TIB_IDX_OFFSET], dil
+dPUSH rdi
+ret
+
+.out_of_input:
+mov byte [rsi + TIB_IDX_OFFSET], dil
+cmp dl, TIB_MAX_SIZE
+jne .refill
+call CLEAR
+
+.refill:
+call REFILL
+jmp WORD_START
+WORD_START_entry:
+dd REFILL_entry
+dd WORD_START
+db 0
+db "WORD_START", 0
+
 ; WORD parses the next word in the TIB,
 ; and returns its image-relative address
-; TODO: rewrite this to not rely on a specific buffer, this is now the last function that hasn't caught up to the new architecture.
+; TODO: fix this, it misparses on some inputs
 WORD_:
-; / setup
-movzx eax, byte [rel tib_idx]
-mov byte [rel scan_start], al ; so we can restore state later in case we need to request more input
-; setup /
+call WORD_START
 
-; / load args
-.restart:
-lea rsi, [rel initial_tib]
-mov dl, ' ' ; space
-mov cl, 0xA ; newline
-jmp .skip_whitespace_start
-; load args /
+mov esi, [rel tib]
+resPTR rsi
 
-; / leading whitespace handler
-.skip_whitespace:
-inc al
-mov byte [rel tib_idx], al ; update tib_idx, we need this so we don't return a bad pointer later
-mov byte [rel scan_start], al ; the start of the word is not actually the whitespace
-.skip_whitespace_start:
-cmp al, TIB_MAX_SIZE
-je .clear
-cmp al, byte [rel tib_len]
-je .refill
+movzx edi, byte [rsi + TIB_IDX_OFFSET]
+movzx edx, byte [rsi + TIB_LEN_OFFSET]
 
-cmp dl, [rsi + rax]
-je .skip_whitespace ; if space, skip
-cmp cl, [rsi + rax]
-je .skip_whitespace ; if newline, skip
-; leading whitespace handler /
+mov bl, 32
+mov cl, 10
 
-; / main loop
-.inner:
-cmp al, TIB_MAX_SIZE
-je .clear
-cmp al, byte [rel tib_len]
-je .refill
+.loop:
+cmp dil, dl
+je .out_of_input
 
-cmp dl, [rsi + rax]
-je .end ; if space, end of word
-cmp cl, [rsi + rax]
-je .end ; if newline, end of word
-inc al ; else, increment idx
-jmp .inner
-; main loop /
+mov al, byte [rsi + rdi]
+; increment here instead of after \
+; the comparisons since otherwise \
+; we'd need an extra inc in .end
+inc dil
+cmp al, bl
+je .end
+cmp al, cl
+je .end
+jmp .loop
 
-; / success path
-.end: ; we get here if we found a space or newline
-mov rdx, rsi
-unresPTR rdx
-movzx ecx, byte [rel tib_idx]
-add edx, ecx ; do this instead of `add dl, byte [rel tib_idx]` to avoid overflow problems
-dPUSH rdx
-mov byte [rsi + rax], 0 ; make the address we pushed be a valid pointer
-inc al ; so that the next call to WORD won't start at the null terminator
-mov byte [rel tib_idx], al ; update tib_idx
+.end:
+mov byte [rsi + TIB_IDX_OFFSET], dil
+; replace the whitespace with nul since we use C-style strings
+mov byte [rsi + rdi - 1], 0 ; -1 because we increment before comparing in the loop
+unresPTR rsi
+add qword [r14 - 8], rsi ; add the start of the tib to the index before returning so we get a pointer
 ret
-; success path /
 
-; / run out of input
-.refill:
-mov byte [rel tib_idx], al
-call REFILL
-mov al, byte [rel scan_start]
-mov [rel tib_idx], al
-jmp .restart
-; run out of input /
-
-; / input exceeds TIB size
-.clear:
-mov al, byte [rel scan_start]
-mov byte [rel tib_idx], al
+.out_of_input:
+mov byte [rsi + TIB_IDX_OFFSET], dil
+cmp dl, TIB_MAX_SIZE
+jne .refill
+; make it so when we restore the cursor later it becomes 0
+mov qword [r14 - 8], 0
 call CLEAR
+
+.refill:
+call REFILL
+
+mov esi, [rel tib]
+resPTR rsi
+dPOP rdi
+mov byte [rsi + TIB_IDX_OFFSET], dil ; restore cursor
+
 jmp WORD_
-; input exceeds TIB size /
 WORD__entry:
-dd REFILL_entry
+dd WORD_START_entry
 dd WORD_
 db 0
 db "WORD", 0
