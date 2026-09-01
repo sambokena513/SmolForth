@@ -9,8 +9,7 @@
 // addresses
 $define aHERE  aINTERPS 4 + $enddef
 $define aSTATE  aINTERPS 8 + $enddef
-$define aSCAN_START  aINTERPS 9 + $enddef
-$define aCOMP_START  aINTERPS 10 + $enddef
+$define aCOMP_START  aINTERPS 9 + $enddef
 
 // variables
 $define HERE  $aHERE @d $enddef
@@ -192,12 +191,12 @@ $CREATE<67 ,b 82 ,b 69 ,b 65 ,b 84 ,b 69 ,b>
 $DEFINITION_END
 
 
-HERE aINTERPS 10 + !d
+HERE aINTERPS 9 + !d
     ]
-        [ aINTERPS 10 + ] LITERAL
+        [ aINTERPS 9 + ] LITERAL
     [
 -61 ,b CREATE aCOMP_START 0 aINTERPS @d 8 + !b
-aINTERPS 10 + @d aINTERPS @d 4 + !d
+aINTERPS 9 + @d aINTERPS @d 4 + !d
 
 
 HERE aCOMP_START !d

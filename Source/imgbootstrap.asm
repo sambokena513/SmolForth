@@ -315,11 +315,13 @@ READTIB:
 mov esi, dword [rel tib]
 resPTR rsi
 
+; append TIB_MAX_SIZE - TIB_LEN bytes
 movzx edx, byte [rsi + TIB_LEN_OFFSET]
 neg rdx
 add rdx, TIB_MAX_SIZE
 
-movzx ecx, byte [rsi + TIB_IDX_OFFSET]
+; start appending after tib_len
+movzx ecx, byte [rsi + TIB_LEN_OFFSET]
 add rsi, rcx
 
 mov rdi, 0
@@ -340,19 +342,22 @@ syscall
 dPUSH -EAGAIN
 ret
 .eof:
+cmp byte [rsi + TIB_LEN_OFFSET], TIB_MAX_SIZE
+je .full
+
 cmp byte [rsi + TIB_EOF_OFFSET], 0
 jne .second_eof
-add byte [rsi + TIB_LEN_OFFSET], 1
 mov byte [rsi + TIB_EOF_OFFSET], 1
-movzx ecx, byte [rsi + TIB_IDX_OFFSET]
-add rsi, rcx
-mov byte [rsi], 10
+movzx ecx, byte [rsi + TIB_LEN_OFFSET]
+mov byte [rsi + rcx], 10
+inc byte [rsi + TIB_LEN_OFFSET]
 dPUSH 1 ; 1 instead of 0 because we "read" (injected) a newline
 ret
 .second_eof:
 cmp dword [rsi + TIB_PARENT_OFFSET], 0
 jne .popbuf
 call GETTERM
+.full:
 dPUSH 0
 ret
 .popbuf:
@@ -448,6 +453,7 @@ db "WORD_START", 0
 ; TODO: fix this, it misparses on some inputs
 WORD_:
 call WORD_START
+.restart:
 
 mov esi, [rel tib]
 resPTR rsi
@@ -482,22 +488,20 @@ add qword [r14 - 8], rsi ; add the start of the tib to the index before returnin
 ret
 
 .out_of_input:
+; save idx to mem so refill can see it
 mov byte [rsi + TIB_IDX_OFFSET], dil
 cmp dl, TIB_MAX_SIZE
 jne .refill
-; make it so when we restore the cursor later it becomes 0
-mov qword [r14 - 8], 0
+
+; .clear
+mov rdi, qword [r14 - 8] ; make sure that clear starts copying from the word's start
+mov qword [r14 - 8], 0 ; idx after this will be 0
+mov byte [rsi + TIB_IDX_OFFSET], dil
 call CLEAR
 
 .refill:
 call REFILL
-
-mov esi, [rel tib]
-resPTR rsi
-dPOP rdi
-mov byte [rsi + TIB_IDX_OFFSET], dil ; restore cursor
-
-jmp WORD_
+jmp .restart
 WORD__entry:
 dd WORD_START_entry
 dd WORD_
@@ -1352,6 +1356,8 @@ call AND_
 INTERPRET:
 call WORD_
 call DUP
+call DOT
+call DUP
 call NUMBERq
 I_0BRANCH .number
 call POP ; pop NUMBER?'s placeholder value
@@ -1401,7 +1407,6 @@ db "INTERPRET", 0
 latest_def dd INTERPRET_entry ; image-relative address, resPTR it before dereferencing!
 here dd HERE_START ; also image-relative
 state db 0 ; 0 = interpreting, -1 = compiling
-scan_start db 0 ; used to restore WORD parse state, copy of tib_idx
 compile_start dd 0 ; used by colon and semicolon to patch code pointers
 tib dd initial_tib ; address of current input buffer, historically named TIB despite it not necessarily being a terminal
 
