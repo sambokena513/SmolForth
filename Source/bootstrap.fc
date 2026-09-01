@@ -296,7 +296,9 @@ COMP_START LATEST 4 + !d IMMEDIATE
 // a pointer to the active input buffer \
 // While TIB is a pointer to the active buffer.
 : aTIB [ aINTERPS 13 + ] LITERAL ;
+: aPOPBUFXT [ aINTERPS 17 + ] LITERAL ;
 : TIB aTIB @d ;
+: POPBUFXT aPOPBUFXT @d ;
 : aTIB_IDX TIB 255 + ;
 : aTIB_LEN TIB 256 + ;
 : STATE aSTATE @b ;
@@ -486,6 +488,7 @@ DWORD_T VARIABLE MACRO_HERE MACRO_HERE_START MACRO_HERE !d
     ENDMACROS
 ;
 
+MACROS
 // Take string pointer to filepath, attempt to open a file with it and redirect stdin to the file,
 // closing whatever fd stdin was previously.
 : EXECF
@@ -499,6 +502,7 @@ DWORD_T VARIABLE MACRO_HERE MACRO_HERE_START MACRO_HERE !d
 ;
 // Version of EXECF that gets its input in a more REPL-friendly way.
 : LOAD WORD EXECF . ;
+ENDMACROS
 
 // Takes a filepath as an argument and writes everything from the image start to HERE \
 // to it, creating the file if it does not exist.

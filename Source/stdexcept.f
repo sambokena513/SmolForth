@@ -78,3 +78,10 @@ CREATE ENDTRY ALIAS THEN IMMEDIATE
 ;
 
 ( Note that in our exceptions we consider 0 to be an invalid value, otherwise we wouldn't be able to implement DYN_CATCH properly. )
+
+( Add new standard exception values here: )
+MACROS
+
+1 CONSTANT EXC_NOMEM
+
+ENDMACROS

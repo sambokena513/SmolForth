@@ -33,7 +33,7 @@ for reading input files, meaning that we can simply make that API open the
 files as nonblocking. This means the only hardcoded part has to be the setup
 for the first buffer.
 -------------------------------------------------------------------------------
-STATE: OPEN | PRIORITY: HIGH
+STATE: CLOSED | PRIORITY: N/A (issue resolved)
 -------------------------------------------------------------------------------
 
 -------------------------------------------------------------------------------
