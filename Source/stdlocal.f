@@ -28,30 +28,24 @@ calls to keep generated code from being too big at the cost more call overhead. 
 
 ( Internal implementations of REF and VAL that take string pointers. )
 
-( r | name -D- )
+( r | xt -D- )
 : __REF
-    FIND DUP -1 == IF POP /' " No such word." 10 ,b '/ ABORT EXIT THEN
-
-    EXECUTE COMPILE LITERAL
-    ['] __REF_RUNTIME LITERAL ECR32
+    EXECUTE ['] __REF_RUNTIME LITERAL ECR32
 ;
 
-( r | name -D- )
+( r | xt -D- )
 : __VAL
-    FIND DUP -1 == IF POP /' " No such word." 10 ,b '/ ABORT EXIT THEN
-
-    EXECUTE COMPILE LITERAL
-    ['] __VAL_RUNTIME LITERAL ECR32
+    EXECUTE ['] __VAL_RUNTIME LITERAL ECR32
 ;
 
 ( Parse the next word; which should be the name of a local, and compile `<offset> __REF_RUNTIME` )
 : REF
-    WORD __REF
+    ' DUP -1 == IF POP /' " No such word." 10 ,b '/ ABORT EXIT THEN __REF
 ; IMMEDIATE
 
 ( Parse the next word; which should be the name of a local, and compile `<offset> __VAL_RUNTIME`. )
 : VAL
-    WORD __VAL
+    ' DUP -1 == IF POP /' " No such word." 10 ,b '/ ABORT EXIT THEN __VAL
 ; IMMEDIATE
 
 ( Start a function definition, locals and args may only be used within functions, not colon definitions. )
@@ -102,7 +96,10 @@ calls to keep generated code from being too big at the cost more call overhead. 
 
 ( Parse and create an arg. )
 : arg:
-    TODO" Make a CONSTANT as a macro, and also compile __REF !q for it."
+    COMPILE local:
+    LATEST __REF
+    ['] !q LITERAL ECR32
+    ( TODO" Make a CONSTANT as a macro, and also compile __REF !q for it." )
 ; IMMEDIATE
 
 ( Parse and create locals until '}', effectively the same as calling local: separately for each word.
