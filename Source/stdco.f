@@ -139,6 +139,10 @@ HERE " ------------------" 0 ,b  MACROS CONSTANT PADDING_STRING ENDMACROS
 
 ( r | task -D- )
 : UNLINK_TASK
+    DUP task.runnable FIELD @d TRUE == IF
+        RUNNABLE_COUNT @d -1 + RUNNABLE_COUNT !d
+    THEN
+
     DUP
     DUP task.prev FIELD @d IF
         ( task.prev.next = task.next )
@@ -148,7 +152,6 @@ HERE " ------------------" 0 ,b  MACROS CONSTANT PADDING_STRING ENDMACROS
         ( head = task.next )
         DUP task.runnable FIELD @d TRUE == IF
             task.next FIELD @d RUNNABLE_LIST !d
-            RUNNABLE_COUNT @d -1 + RUNNABLE_COUNT !d
         ELSE
             task.next FIELD @d SUSPENDED_LIST !d
         THEN

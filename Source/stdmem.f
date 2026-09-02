@@ -296,6 +296,8 @@ Returns -1 if it cannot find any nonempty buckets. )
         OVER SWAP extent.prev_bucket FIELD !d
     ELSE
         POP
+        0 OVER extent.next_bucket FIELD !d
+        0 OVER extent.prev_bucket FIELD !d
     THEN
 
     SWAP DWORD_T BUCKETS INDEX !d
