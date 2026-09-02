@@ -1,4 +1,5 @@
 Artefacts/
 Backups/
+Source/bootstrap.f
 *.gz
 *.tar
