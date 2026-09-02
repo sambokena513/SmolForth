@@ -26,7 +26,7 @@
 
 ## ABI:
 
-- r15 holds the image base address, we could technically just make everything RIP-relative to not need it but the problem with that is that it ironically makes code less relocatable. If absolutely everything in the image is RIP-relative then the image can only move together, whereas keeping compiled calls RIP-relative but data r15-relative allows us to move the dictionary without moving the code, or move the code and only need to update the dictionary.
+- r15 holds the image base address, all pointers in the runtime are image-relative and resolved dynamically when needed by adding r15 to them.
 
 - r14 holds the next free slot in the data stack, which is 8KB. Every value on the stack is 8 bytes (1 cell), meaning that you can have at most 1024 temporaries on the stack. Note that the stack grows upward, this is so that we can have rsp and r14 grow towards each other which makes implementing coroutines safer.
 
@@ -38,10 +38,10 @@
 - The ABI treats every register apart from r14 and r15 (which are reserved) as caller-saved, you are encouraged to not use registers for storing intermediate values, use the data stack or only use registers in primitives that call nothing else.
 Apart from that, clean up any intermediates on the stack when you're done with them, you shouldn't rely on the stack being emptied when the image is reloaded to make your code work.
 
-- The TIB is 255 bytes, we only call sys_read with a length long enough to fill the TIB. If a word gets cut off we backtrack to the last whitespace, interpret that, and copy the cut-off word back to the start of TIB, then sys_read with the length being 255 - however many characters are already in TIB.
+- There is no universal TIB (terminal input buffer) as in some Forth systems, instead we maintain a linked list of input buffers with metadata such as parser state, length, and fd. Each buffer has a max length of 255 bytes, and the fd of an input buffer is *required* by the runtime to have the flag O_NONBLOCK. The current input buffer (head of the linked list) is what is referred to as the "TIB".
 
 - Whitespaces (such as spaces or newlines) are changed to null bytes by parsing words like WORD.
-This allows words such as FIND that look for a null terminator in their string arguments to be given pointers into the TIB.
+This allows words taking string arguments to receive pointers into the TIB.
 Note that REFILL or other basic input words don't do this, this means you can define something like ." and have it do custom parsing without every whitespace in the string literal already being corrupted into \0.
 
 - The dictionary entry format is equivalent to the following C struct:
@@ -94,6 +94,18 @@ The standard library tries to be unopinionated in low level functionality, thoug
     - <n> pALLOC - Allocates n contiguous pages and returns the address of the first one.
     - <n> <addr> pFREE - Frees n pages starting at addr.
 
+- <stdinclude.f> :; Include files and work with the input buffer list.
+
+- <stdslab.f> :; Efficiently allocate many fixed-size objects, obtains backing memory from pALLOC/pFREE.
+
+- <stdco.f> :; Concurrency in the form of cooperative multitasking, API:
+    - <argn> ... <arg2> <arg1> <argc> <xt> SPAWN_TASK - Spawn a new task with given args that behaves as <xt>.
+    - <task> END_TASK - Kill a task.
+    - YIELD - Switch from the current task to another one.
+    - <fd> SUSPEND - Mark the current task as waiting on <fd> and yield.
+
+- <stdinit.f> :; Glue logic for initializing all important stdlib state before entering the REPL
+
 ## Primitive Word List:
 
 - `GREET` - Prints "Hello from the image!" to the console.
@@ -101,19 +113,22 @@ The standard library tries to be unopinionated in low level functionality, thoug
 - `!b !w !d !q` - Store a value into memory, arguments are the address and value.
 - `FIND` - Takes a string name as an argument and attempts to find a matching dictionary entry, if successful it returns the dictionary entry address, otherwise -1.
 - `EXECUTE` - Takes a dictionary entry, resolves its code pointer, and jumps to it.
-- `REFILL` - Attempts to fill the terminal input buffer (TIB) by reading from stdin, if it succeeds TIB_LEN is increased by the number of bytes read, and if it gets EOF if redirects stdin to /dev/tty, does not handle errors.
+- `GETTERM` - Replaces the current input buffer with /dev/tty, exits with EX_IOERR if it fails.
+- `READTIB` - Attempts to fill the current input buffer with data using sys_read, on EAGAIN returns -EAGAIN, otherwise returns number of bytes read. Exits with EX_IOERR if it fails.
+- `REFILL` - Synchronously invokes READTIB by calling poll() with an infinite timeout if EAGAIN is returned.
+- `WORD_START` - Returns the address of the start of the next word in the TIB, does not parse it!
 - `WORD` - Returns the address of the next word in the TIB while making it a valid string by delimiting it, note that this address is invalidated upon calls to CLEAR, calls REFILL if it runs out of input, and calls CLEAR if REFILL runs out of space.
 - `CLEAR` - Shifts all unparsed data in the TIB back to the start while setting the parser cursor to index 0.
 - `EXIT` - Removes one return address from the return stack before returning, effectively skipping its own normal return address, can be used to perform an early return in a compiled word, or in the REPL to exit the interpreter.
 - `NUMBER?` - Takes a string and attempts to parse it as a 64-bit signed integer, it returns whether it failed (-1 for failure), and the value of the integer (if it failed then this is set to a placeholder value of -1).
 - `POP` - Moves the data stack pointer down by 8 bytes, effectively removing whatever was on the top of it.
 - `I64TS` - Takes a pointer to the end of a 21-byte free block and an integer, and converts the integer to a string which it writes into this block, and then returns the string start address.
-- `.` - Prints one number to stdout, internally calls I64TS and uses the data stack as the free block.
+- `.` - Prints one number to stdout, internally calls I64TS and uses the data stack as the free block. Note that this primitive is overwritten by <stdio.f> if you build against the stdlib.
 - `+ - * / ~ & | ^ << >>` - Arithmetic and bitwise operators.
 - `< > == <> >= <=` - Numeric comparisons operators.
 - `-? +?` - Sign bit checking operators, `-?` returns true if the number is negative while `+?` returns true when it is nonnegative.
 - `aINTERPS` - Pushes the address of the interpreter state struct.
-- `DUP SWAP OVER` - Stack operators.
+- `DUP SWAP OVER ROT -ROT` - Stack operators.
 - `SYSCALL` - Pops seven values, the first is the syscall number and the remaining 6 are the arguments to the syscall, then performs a Linux syscall and pushes whatever *it* returned in rax to the data stack.
 - `BASE` - Pushes the *absolute* 64-bit address of the start of the image, mostly used together with SYSCALL since providing an image-relative address to it would return EFAULT.
 - `rSP@ dSP@ rSP! dSP!` - get and set rsp (return stack pointer; rSP) and r14 (data stack pointer; dSP) respectively, misuse can cause stack corruption, but these are necessary to switch execution contexts such as in a coroutine scheduler.
@@ -135,5 +150,5 @@ The standard library tries to be unopinionated in low level functionality, thoug
     ```
     jmp rel32 ; number
     ```
-- `ABORT` - Takes a string and prints it to stdout before resetting parser state and redirecting stdin to /dev/tty, used for REPL errors.
+- `ABORT` - Takes a string and prints it to stdout before resetting parser state and calling GETTERM.
 - `INTERPRET` - Calls WORD, NUMBER?, FIND, EXECUTE, ECR32, LITERAL, and ABORT based on the current state and dictionary entry flags; the outer interpreter.

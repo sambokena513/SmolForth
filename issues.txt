@@ -65,5 +65,5 @@ there, maybe just use sys_nanosleep in the synchronous version, and SUSPEND
 instead of YIELD in the async version together with a priviliged task that
 calls epoll_wait().
 -------------------------------------------------------------------------------
-STATE: OPEN | PRIORITY: MEDIUM
+STATE: OPEN/STARTED/POSTPONED | PRIORITY: MEDIUM
 -------------------------------------------------------------------------------
