@@ -2,43 +2,49 @@
 
 ( <stdlocal.f> :: Define words with access to local variables that don't inhibit recursion, and arguments, which are locals that automatically bind. )
 
+WORD_T TMPVAR LOCAL_COUNT
 
-( Allocate space for n locals on the local stack. )
+( r | n -D- :; Allocate space for n locals on the local stack. )
 : ENTER_FRAME
-    TODO" allocate n locals"
+    QWORD_T * lSP @d + lSP !d
 ;
 
-( Release space for n locals on the local stack. )
+( r | n -D- :; Release space for n locals on the local stack. )
 : LEAVE_FRAME
-    TODO" free n locals"
+    QWORD_T * lSP @d - lSP !d
 ;
 
 ( Internal implementations of REF and VAL that take string pointers. )
+
+( r | name -D- )
 : __REF
-    TODO" compile `lSP <offset> +`"
+    TODO" compile `lSP @d <offset> +`"
 ;
 
+( r | name -D- )
 : __VAL
-    TODO" compile `lSP <offset> + @q`"
+    TODO" compile `lSP @d <offset> + @q`"
 ;
 
-( Parse the next word; which should be the name of a local, and compile `lSP <offset> +` )
+( Parse the next word; which should be the name of a local, and compile `lSP @d <offset> +` )
 : REF
     WORD __REF
 ; IMMEDIATE
 
-( Parse the next word; which should be the name of a local, and compile `lSP <offset> + @q`. )
+( Parse the next word; which should be the name of a local, and compile `lSP @d <offset> + @q`. )
 : VAL
     WORD __VAL
 ; IMMEDIATE
 
 ( Start a function definition, locals and args may only be used within functions, not colon definitions. )
 : FUNCTION
-    TODO" like colon but we first compile a snippet to perform ENTER_FRAME and LEAVE_FRAME"
+    TODO" like colon but we first compile a snippet to perform ENTER_FRAME and LEAVE_FRAME, also record LATEST so we know where the locals start."
 ;
 
 ( End a function definition. )
-CREATE ENDFUNC ALIAS ; IMMEDIATE
+: ENDFUNC
+    TODO" restore LATEST, then finish the definition"
+;
 
 ( Parse and create a local. )
 : local:
@@ -63,3 +69,5 @@ being empty. )
 : #
     TODO" Call arg: until '\'"
 ; IMMEDIATE
+
+FORGET LOCAL_COUNT POP
