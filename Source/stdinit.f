@@ -1,4 +1,4 @@
-( Dependencies: bootstrap.f, stdstring.f, stdassert.f, stdctx.f, stdexcept.f, stdio.f, stddict.f, stdmem.f, stdinclude.f, stdslab.f, stdco.f )
+( Dependencies: bootstrap.f, stdstring.f, stdassert.f, stdctx.f, stdexcept.f, stdio.f, stddict.f, stdlocal.f, stdmem.f, stdinclude.f, stdslab.f, stdco.f )
 
 ( <stdinit.f> :; INIT function that can be used with SET_INIT to make interactive images that
 first reset all important stdlib state before calling INTERPRET. )

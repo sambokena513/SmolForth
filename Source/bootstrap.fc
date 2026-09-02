@@ -559,13 +559,13 @@ ENDMACROS
 ;
 
 
-BYTE_T VARIABLE SNAPSHOT_TIDX
-BYTE_T VARIABLE SNAPSHOT_TLEN
+BYTE_T VARIABLE IDUMP_TIDX
+BYTE_T VARIABLE IDUMP_TLEN
 : IDUMP
 
     // store TIB_IDX and TIB_LEN for later restoration
-    TIB_IDX SNAPSHOT_TIDX !b
-    TIB_LEN SNAPSHOT_TLEN !b
+    TIB_IDX IDUMP_TIDX !b
+    TIB_LEN IDUMP_TLEN !b
 
     // zero TIB_IDX and TIB_LEN so that the file written by __IDUMP will not \
     // remember the REPL state of the image that wrote it, as that would \
@@ -577,8 +577,8 @@ BYTE_T VARIABLE SNAPSHOT_TLEN
     __IDUMP
 
     // restore interpreter state
-    SNAPSHOT_TIDX @b aTIB_IDX !b
-    SNAPSHOT_TLEN @b aTIB_LEN !b
+    IDUMP_TIDX @b aTIB_IDX !b
+    IDUMP_TLEN @b aTIB_LEN !b
 ;
 
 // REPL wrapper for IDUMP, gets the filepath from the token stream.
