@@ -102,18 +102,34 @@ calls to keep generated code from being too big at the cost more call overhead. 
     ( TODO" Make a CONSTANT as a macro, and also compile __REF !q for it." )
 ; IMMEDIATE
 
+( r | last-word -D- :; Un-parse the last word by setting TIB_IDX to its start and replacing its delimiter with a whitespace. )
+: UN_WORD
+    TIB OVER - aTIB_IDX !b
+    DUP STRLEN + 32 SWAP !b
+;
+
 ( Parse and create locals until '}', effectively the same as calling local: separately for each word.
 Note that this must be called *after* FUNCTION, it is invalid outside of a function definition, including inside
 colon definitions. )
 : {
-    TODO" Call local: until '}'"
+    WORD DUP r" }" STRCMP IF
+        POP
+    ELSE
+        UN_WORD COMPILE local: TSELF
+    THEN
 ; IMMEDIATE
 
 ( Parse and create args until '\', same as calling arg: separately for each word.
 Note that this should be called only *immediately after* FUNCTION because it depends on the code body of the word 
 being empty. )
-: #
-    TODO" Call arg: until '\'"
+: \
+    WORD DUP r" \" STRCMP IF
+        POP
+    ELSE
+        UN_WORD COMPILE arg: TSELF
+    THEN
 ; IMMEDIATE
 
 FORGET LOCAL_COUNT POP
+FORGET LOCAL_START POP
+FORGET FUNC_NAME_BUF POP
