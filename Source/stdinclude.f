@@ -52,3 +52,13 @@ ENDMACROS
 : INCLUDE
     WORD ENTER_FILE -1 == IF EXC_NOMEM THROW THEN
 ;
+
+( IFDEF and IFNDEF are basic compositions of EXISTS? and EXEC_IF, they take an xt and execute it if something is defined or not.
+Usually used for include guards in the phrase `POPBUFXT IFDEF MYFILE_F` or alternatively, `' LEAVE_FILE IFDEF MYFILE_F` )
+: IFDEF
+    EXISTS? SWAP EXEC_IF
+;
+
+: IFNDEF
+    FIND -1 == SWAP EXEC_IF
+;
