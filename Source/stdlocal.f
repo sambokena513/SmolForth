@@ -4,6 +4,7 @@
 
 WORD_T TMPVAR LOCAL_COUNT
 DWORD_T TMPVAR LOCAL_START
+255 TMPVAR FUNC_NAME_BUF
 
 ( r | n -D- :; Allocate space for n locals on the local stack. )
 : ENTER_FRAME
@@ -58,7 +59,10 @@ calls to keep generated code from being too big at the cost more call overhead. 
     ( start the word )
     LATEST LOCAL_START !d
     0 LOCAL_COUNT !w
+
+    ( start compiling )
     :
+    FUNC_NAME_BUF WNB STRCPY
 
     0 COMPILE LITERAL ( placeholder literal, patched by ENDFUNC to the actual local count )
     ['] ENTER_FRAME LITERAL ECR32
@@ -79,12 +83,21 @@ calls to keep generated code from being too big at the cost more call overhead. 
     COMP_START 29 + !d
     
     ( finish definition )
+    WNB FUNC_NAME_BUF STRCPY
     COMPILE ;
 ; IMMEDIATE
 
 ( Parse and create a local. )
 : local:
-    TODO" Make a CONSTANT as a macro"
+    ( save comp_start of the current word since it would get corrupted by CONSTANT )
+    COMP_START
+
+    LOCAL_COUNT @w QWORD_T * -8 -
+    MACROS CONSTANT ] ENDMACROS
+    LOCAL_COUNT @w 1 + LOCAL_COUNT !w
+
+    ( restore comp_start )
+    aCOMP_START !d
 ; IMMEDIATE
 
 ( Parse and create an arg. )
