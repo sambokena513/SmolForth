@@ -291,9 +291,12 @@ Returns -1 if it cannot find any nonempty buckets. )
     OVER DWORD_T BUCKETS INDEX @d
 
     DUP IF
-        2DUP SWAP
-        extent.next_bucket FIELD !d
-        OVER SWAP extent.prev_bucket FIELD !d
+        ( curr.next_bucket = head; curr.prev_bucket = 0; head.prev_bucket = curr )
+        SWAP
+        2DUP extent.next_bucket FIELD !d
+        0 OVER extent.prev_bucket FIELD !d
+        TUCK SWAP
+        extent.prev_bucket FIELD !d
     ELSE
         POP
         0 OVER extent.next_bucket FIELD !d
@@ -380,10 +383,6 @@ and the next extent has a lower address than the pivot, return true. )
 Takes the desired address and page_count, returns nothing. O[n]. )
 : NEW_EXTENT
     TUCK !d EXTENT_LIST @d
-
-    ( zero the bucket prev and next fields here since we can't assume the extent currently has null pointers there )
-    OVER 0 SWAP extent.prev_bucket FIELD !d
-    OVER 0 SWAP extent.next_bucket FIELD !d
 
     DUP 0 == IF
         ( replace the head with the next extent )
