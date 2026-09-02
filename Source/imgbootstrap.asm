@@ -1396,7 +1396,7 @@ I_AGAIN
 call POP ; FIND -
 I_ERR i_errnf
 ret
-i_errnf db "error: FIND returned -1", 0xA, 0
+i_errnf db "No such word.", 0xA, 0
 INTERPRET_entry:
 dd ABORT_entry
 dd INTERPRET
