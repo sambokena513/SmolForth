@@ -16,11 +16,28 @@
 )
 
 ( Push, pop, and read a 32-bit value respectively from the exception stack. )
-: >E eSP @d !d eSP @d 4 + eSP !d ;
+
+( Reference implementation: `: >E eSP @d !d eSP @d 4 + eSP !d ;`, while this is possible to
+write in Forth, moving it into assembly made an exception overhead benchmark nearly twice as fast [from 5.7 to 3.7 seconds],
+so it really is worth it to keep this native. )
+: >E
+    [
+        65 ,b -117 ,b -121 ,b eSP ,d ( mov eax, [r15 + esP] )
+        73 ,b -117 ,b 94 ,b -8 ,b ( mov rbx, [r14 - 8] )
+        65 ,b -119 ,b 28 ,b 7 ,b ( mov [r15 + rax], ebx )
+        65 ,b -125 ,b -121 ,b eSP ,d 4 ,b ( add dword [r15 + eSP], 4 )
+        73 ,b -125 ,b -18 ,b 8 ,b ( sub r14, 8 )
+    ]
+;
+
 : E> eSP @d -4 + eSP !d eSP @d @d ;
 : E@ eSP @d -4 + @d ;
 
+
 ( r | -E- handler | handler-addr -D- )
+( TODO: this could also be moved into assembly, we can keep the rest as-is since
+the exceptional path isn't too common, but since PUSH_HANDLER gets called in the normal
+path too, it's a large source of overhead. )
 : PUSH_HANDLER
     >E
     rSP@ BASE SWAP - 8 + >E
