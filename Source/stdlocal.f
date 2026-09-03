@@ -6,14 +6,32 @@ WORD_T TMPVAR LOCAL_COUNT
 DWORD_T TMPVAR LOCAL_START
 255 TMPVAR FUNC_NAME_BUF
 
+(
+    Note, while none of these functions are impossible [ or even difficult ] to write in Forth,
+    we use some machine code here for performance to eliminate a bit of overhead.
+    This makes ENTER_FRAME and LEAVE_FRAME about 50% faster overall.
+)
+
 ( r | n -D- :; Allocate space for n locals on the local stack. )
 : ENTER_FRAME
-    QWORD_T * lSP @d + lSP !d
+    [
+        65 ,b -64 ,b 102 ,b -8 ,b 3 ,b ( shl [r14 - 8], 3 )
+        65 ,b -117 ,b  -121 ,b lSP ,d ( mov eax, [r15 + lSP] )
+        73 ,b 3 ,b 70 ,b -8 ,b ( add rax, [r14 - 8] )
+        73 ,b -125 ,b -18 ,b 8 ,b ( sub r14, 8 )
+        65 ,b -119 ,b -121 ,b lSP ,d ( mov [r15 + lSP], eax )
+    ]
 ;
 
 ( r | n -D- :; Release space for n locals on the local stack. )
 : LEAVE_FRAME
-    QWORD_T * lSP @d - lSP !d
+    [
+        65 ,b -64 ,b 102 ,b -8 ,b 3 ,b ( shl [r14 - 8], 3 )
+        65 ,b -117 ,b  -121 ,b lSP ,d ( mov eax, [r15 + lSP] )
+        73 ,b 43 ,b 70 ,b -8 ,b ( sub rax, [r14 - 8] )
+        73 ,b -125 ,b -18 ,b 8 ,b ( sub r14, 8 )
+        65 ,b -119 ,b -121 ,b lSP ,d ( mov [r15 + lSP], eax )
+    ]
 ;
 
 ( Runtime functions for REF and VAL, we use this instead of directly compiling the
