@@ -18,34 +18,26 @@ DWORD_T TMPVAR LOCAL_START
 
 ( Runtime functions for REF and VAL, we use this instead of directly compiling the
 calls to keep generated code from being too big at the cost more call overhead. )
-: __REF_RUNTIME
-    lSP @d +
+: __TO_RUNTIME
+    lSP @d + !q
 ;
 
-: __VAL_RUNTIME
+: __LOCAL_RUNTIME
     lSP @d + @q
 ;
 
 ( Internal implementations of REF and VAL that take string pointers. )
 
 ( r | xt -D- )
-: __REF
-    EXECUTE ['] __REF_RUNTIME LITERAL ECR32
+: __TO
+    4 + @d 2 + @q COMPILE LITERAL
+    ['] __TO_RUNTIME LITERAL ECR32
 ;
 
-( r | xt -D- )
-: __VAL
-    EXECUTE ['] __VAL_RUNTIME LITERAL ECR32
-;
-
-( Parse the next word; which should be the name of a local, and compile `<offset> __REF_RUNTIME` )
-: REF
-    ' DUP -1 == IF POP /' " No such word." 10 ,b '/ ABORT EXIT THEN __REF
-; IMMEDIATE
-
-( Parse the next word; which should be the name of a local, and compile `<offset> __VAL_RUNTIME`. )
-: VAL
-    ' DUP -1 == IF POP /' " No such word." 10 ,b '/ ABORT EXIT THEN __VAL
+( Parse the next word, which should be the name of a local, and arrange for a value to be popped from the stack
+into that local at runtime. )
+: TO
+    ' DUP -1 == IF POP /' " No such word." 10 ,b '/ ABORT EXIT THEN __TO
 ; IMMEDIATE
 
 DWORD_T TMPVAR LITa1
@@ -113,11 +105,25 @@ FORGET LITa3 POP
 
 ( Parse and create a local. )
 : local:
-    ( save comp_start of the current word since it would get corrupted by CONSTANT )
+    ( save comp_start of the current word since it would get corrupted by the new definition )
     COMP_START
 
-    LOCAL_COUNT @w QWORD_T * -8 -
-    MACROS CONSTANT ] ENDMACROS
+    MACROS
+
+    ( define the local )
+    :
+
+    LOCAL_COUNT @w QWORD_T * -8 - COMPILE LITERAL
+    ['] LITERAL LITERAL ECR32
+
+    ['] __LOCAL_RUNTIME LITERAL COMPILE LITERAL
+    ['] ECR32 LITERAL ECR32
+
+    COMPILE ;
+    UNIQUE IMMEDIATE
+
+    ] ENDMACROS
+
     LOCAL_COUNT @w 1 + LOCAL_COUNT !w
 
     ( restore comp_start )
@@ -127,9 +133,7 @@ FORGET LITa3 POP
 ( Parse and create an arg. )
 : arg:
     COMPILE local:
-    LATEST __REF
-    ['] !q LITERAL ECR32
-    ( TODO" Make a CONSTANT as a macro, and also compile __REF !q for it." )
+    LATEST __TO
 ; IMMEDIATE
 
 ( r | last-word -D- :; Un-parse the last word by setting TIB_IDX to its start and replacing its delimiter with a whitespace. )
