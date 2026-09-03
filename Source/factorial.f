@@ -1,7 +1,7 @@
-: FACTORIAL
-    1 SWAP BEGIN
-    DUP 0 < WHILE
-        SWAP OVER * SWAP -1 +
-    REPEAT
-    POP
-;
+FUNCTION FACTORIAL \ n \
+    VAL n IF
+        VAL n -1 + SELF VAL n *
+    ELSE
+        1
+    THEN
+ENDFUNC

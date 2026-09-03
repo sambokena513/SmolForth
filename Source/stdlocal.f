@@ -48,6 +48,11 @@ calls to keep generated code from being too big at the cost more call overhead. 
     ' DUP -1 == IF POP /' " No such word." 10 ,b '/ ABORT EXIT THEN __VAL
 ; IMMEDIATE
 
+DWORD_T TMPVAR LITa1
+DWORD_T TMPVAR LITa2
+DWORD_T TMPVAR LITa3
+DWORD_T TMPVAR CALa
+
 ( Start a function definition, locals and args may only be used within functions, not colon definitions. )
 : FUNCTION
     ( start the word )
@@ -58,12 +63,33 @@ calls to keep generated code from being too big at the cost more call overhead. 
     :
     FUNC_NAME_BUF WNB STRCPY
 
-    0 COMPILE LITERAL ( placeholder literal, patched by ENDFUNC to the actual local count )
-    ['] ENTER_FRAME LITERAL ECR32
-    -24 ,b 23 ,d ( compile a call to just after the snippet )
-    0 COMPILE LITERAL ( second placeholder literal )
-    ['] LEAVE_FRAME LITERAL ECR32
+    (
+        Word template, the 0 literals are placeholders for ENDFUNC to patch with the local count
+        Essentially this template just makes sure that both local and nonlocal control-flow cannot exit a
+        function without properly allocating and then freeing its locals.
+    )
+
+    COMPILE TRY
+
+        HERE LITa1 !d 0 COMPILE LITERAL
+        ['] ENTER_FRAME LITERAL ECR32
+        HERE CALa !d -24 ,b 0 ,d ( compile a placeholder call )
+        HERE LITa2 !d 0 COMPILE LITERAL
+        ['] LEAVE_FRAME LITERAL ECR32
+
+    COMPILE CATCH
+
+        HERE LITa3 !d 0 COMPILE LITERAL
+        ['] LEAVE_FRAME LITERAL ECR32
+        ['] THROW LITERAL ECR32
+
+    COMPILE ENDTRY
+
     -61 ,b ( compile a ret )
+
+    ( patch the placeholder call )
+    CALa @d 5 + HERE -
+    CALa @d 1 + !d
 ;
 
 ( End a function definition. )
@@ -72,14 +98,18 @@ calls to keep generated code from being too big at the cost more call overhead. 
     LOCAL_START @d aINTERPS !d
 
     ( patch literals in start snippet to the actual local count )
-    LOCAL_COUNT @w DUP
-    COMP_START __LITva !d
-    COMP_START 29 + !d
+    LOCAL_COUNT @w LITa1 @d 2 + !q
+    LOCAL_COUNT @w LITa2 @d 2 + !q
+    LOCAL_COUNT @w LITa3 @d 2 + !q
     
     ( finish definition )
     WNB FUNC_NAME_BUF STRCPY
     COMPILE ;
 ; IMMEDIATE
+
+FORGET LITa1 POP
+FORGET LITa2 POP
+FORGET LITa3 POP
 
 ( Parse and create a local. )
 : local:
