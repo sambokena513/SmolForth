@@ -18,30 +18,39 @@
         } Task;
 
     We maintain two doubly-linked lists of tasks; one for runnable tasks and one for suspended tasks.
-    A task is runnable if its `runnable` field is set to -1, otherwise the value of `runnable` corresponds
-    to a file descriptor the task is waiting on. Note that this is for forwards compatibility with a privileged epoll task,
-    the core scheduler does not actually deal with resuming suspended tasks.
+
+    A task is runnable if its `runnable` field is a truthy value, and otherwise suspended.
+
+    The `onsuspend` and `onkill` fields are callbacks [ XTs ], they are executed *before* performing the respective operations.
+    If either is 0, then it will *not* be called when performing the operation [ default behaviour ], these are intended to be
+    set by a "manager" task such as in an async IO library to ensure it knows when events occur and can thus free metadata related to a task.
+    Note that these callbacks should be nullary [ they can use `CURR_TASK @d` to get the task, and then based on that index internal metadata for example,
+    or pass arguments by proxy through a different stack ].
 
     A task's `timestamp` is a TSC value that when reached, means the task has used its alloted run time. This is recalculated
     and set whenever a task is switched *to*, and periodically compared against RDTSC to decide whether CHECKPOINT should make
     the task yield or not.
 
+You can register callbacks in the forms 
+
     Finally, each task has a `ctx` field holding an execution context associated with that task, note that this is stored *by value*,
-    it is not a pointer to an execution context, which makes the task struct in total 52 bytes with these fields and offsets:
+    it is not a pointer to an execution context, which makes the task struct in total 60 bytes with these fields and offsets:
 
         0 - DWORD_T next
         4 - DWORD_T prev
         8 - QWORD_T timestamp
-        16 - DWORD_T runnable
-        20 - DWORD_T ctx
-        20 - DWORD_T ctx.dSP_BASE
-        24 - DWORD_T ctx.rSP_BASE
-        28 - DWORD_T ctx.eSP_BASE
-        32 - DWORD_T ctx.lSP_BASE
-        36 - DWORD_T ctx.dSP
-        40 - DWORD_T ctx.rSP
-        44 - DWORD_T ctx.eSP
-        48 - DWORD_T ctx.lSP
+        16 - DWORD_T runnable [ dword for struct alignment ]
+        20 - DWORD_T onsuspend
+        24 - DWORD_T onkill
+        28 - DWORD_T ctx
+        28 - DWORD_T ctx.dSP_BASE
+        32 - DWORD_T ctx.rSP_BASE
+        36 - DWORD_T ctx.eSP_BASE
+        40 - DWORD_T ctx.lSP_BASE
+        44 - DWORD_T ctx.dSP
+        48 - DWORD_T ctx.rSP
+        52 - DWORD_T ctx.eSP
+        56 - DWORD_T ctx.lSP
 )
 
 ( small wrapper around rdtsc )
@@ -77,7 +86,7 @@ maybe 16.6ms for a game loop, or 1ms for a multi-client server. Note that this
 would of course increase scheduler overhead since YIELD is pretty expensive. )
 QWORD_T VARIABLE CYCLE_SPEED GET_STSCVAL CYCLE_SPEED !q
 65536 CONSTANT MAX_TASKS
-52 CONSTANT TASK_SIZE
+60 CONSTANT TASK_SIZE
 
 MACROS
 
@@ -85,17 +94,17 @@ MACROS
 4 CONSTANT task.prev
 8 CONSTANT task.timestamp ( when we should switch tasks, ie. if rdtsc >= task.timestamp we yield )
 16 CONSTANT task.runnable
-20 CONSTANT task.ctx
-
-20 CONSTANT task.ctx.dSP_BASE
-24 CONSTANT task.ctx.rSP_BASE
-28 CONSTANT task.ctx.eSP_BASE
-32 CONSTANT task.ctx.lSP_BASE
-
-36 CONSTANT task.ctx.dSP
-40 CONSTANT task.ctx.rSP
-44 CONSTANT task.ctx.eSP
-48 CONSTANT task.ctx.lSP
+20 CONSTANT task.onsuspend
+24 CONSTANT task.onkill
+28 CONSTANT task.ctx
+28 CONSTANT task.ctx.dSP_BASE
+32 CONSTANT task.ctx.rSP_BASE
+36 CONSTANT task.ctx.eSP_BASE
+40 CONSTANT task.ctx.lSP_BASE
+44 CONSTANT task.ctx.dSP
+48 CONSTANT task.ctx.rSP
+52 CONSTANT task.ctx.eSP
+56 CONSTANT task.ctx.lSP
 
 ENDMACROS
 
@@ -113,6 +122,8 @@ DWORD_T VARIABLE RUNNABLE_COUNT 0 RUNNABLE_COUNT !d
     r" prev: " PRINT DUP task.prev FIELD @d .
     r" timestamp: " PRINT DUP task.timestamp FIELD @q .
     r" runnable: " PRINT DUP task.runnable FIELD @d .
+    r" onsuspend: " PRINT DUP task.onsuspend FIELD @d .
+    r" onkill: " PRINT DUP task.onkill FIELD @d .
     task.ctx FIELD PRINT_CTX
 ;
 
@@ -139,7 +150,7 @@ HERE " ------------------" 0 ,b  MACROS CONSTANT PADDING_STRING ENDMACROS
 
 ( r | task -D- )
 : UNLINK_TASK
-    DUP task.runnable FIELD @d TRUE == IF
+    DUP task.runnable FIELD @d IF
         RUNNABLE_COUNT @d -1 + RUNNABLE_COUNT !d
     THEN
 
@@ -150,7 +161,7 @@ HERE " ------------------" 0 ,b  MACROS CONSTANT PADDING_STRING ENDMACROS
         SWAP task.next FIELD @d SWAP !d
     ELSE
         ( head = task.next )
-        DUP task.runnable FIELD @d TRUE == IF
+        DUP task.runnable FIELD @d IF
             task.next FIELD @d RUNNABLE_LIST !d
         ELSE
             task.next FIELD @d SUSPENDED_LIST !d
@@ -215,17 +226,21 @@ HERE " ------------------" 0 ,b  MACROS CONSTANT PADDING_STRING ENDMACROS
     THEN
 ;
 
-( r | fd -D- :; Suspend the current task and switch to another runnable one. If there are no runnable tasks to switch to, exit the scheduler. )
+( r | -D- :; Suspend the current task and switch to another runnable one. If there are no runnable tasks to switch to, exit the scheduler. )
 : SUSPEND
     CURR_TASK @d
-    DUP UNLINK_TASK
-    GET_NEXT_TASK >C
-    DUP LINK_SUSPENDED
-    task.runnable FIELD !d
 
-    C> DUP 0 == IF
+    ( first execute the callback if it exists )
+    DUP task.onsuspend FIELD @d DUP IF EXECUTE ELSE POP THEN
+
+    DUP UNLINK_TASK
+    GET_NEXT_TASK SWAP
+    LINK_SUSPENDED
+
+    DUP 0 == IF
         POP MAIN_CTX SWITCH_CTX EXIT
     THEN
+
     SWITCH_TASK
 ;
 
@@ -264,6 +279,9 @@ data structure mapping task pointers to their fds and have async IO functions ch
             MAIN_CTX SWITCH_CTX
         THEN
     ELSE
+        ( call onkill callback first if needed )
+        DUP task.onkill FIELD @d DUP IF EXECUTE ELSE POP THEN
+
         DUP UNLINK_TASK
         DUP task.ctx.dSP_BASE FIELD @d 6 SWAP pFREE
         TASK_SLAB @d SLAB_FREE
@@ -308,9 +326,13 @@ and arrange for switching to its context to execute that xt with provided argume
         -1 EXIT
     THEN
 
-    ( initialize stacks )
     RUNNABLE_LIST @d
 
+    ( initialize callbacks to zero, wrappers around SPAWN_TASK can then set these later )
+    0 OVER task.onsuspend FIELD !d
+    0 OVER task.onkill FIELD !d
+
+    ( initialize stacks )
     2DUP task.ctx.dSP_BASE FIELD !d
     2DUP task.ctx.dSP FIELD !d SWAP [ 4 4096 * ] LITERAL + SWAP
 

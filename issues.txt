@@ -92,5 +92,5 @@ from that, we need to make sure that the new changes will actually be enough
 to allow asynchronous IO to be implemented in other libraries, and not once
 again "just a bit too little" like the fd field was.
 -------------------------------------------------------------------------------
-STATE: OPEN | PRIORITY: MEDIUM-HIGH
+STATE: CLOSED | PRIORITY: N/A ( issue resolved )
 -------------------------------------------------------------------------------
