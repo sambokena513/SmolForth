@@ -12,22 +12,22 @@ DWORD_T TMPVAR LOCAL_START
     This makes ENTER_FRAME and LEAVE_FRAME about 50% faster overall.
 )
 
-( r | n -D- :; Allocate space for n locals on the local stack. )
+( r | n -D- :; Allocate space for n locals on the local stack. Reference: `QWORD_T * lSP @d + lSP !d` )
 : ENTER_FRAME
     [
         65 ,b -64 ,b 102 ,b -8 ,b 3 ,b ( shl [r14 - 8], 3 )
-        65 ,b -117 ,b  -121 ,b lSP ,d ( mov eax, [r15 + lSP] )
+        65 ,b -117 ,b -121 ,b lSP ,d ( mov eax, [r15 + lSP] )
         73 ,b 3 ,b 70 ,b -8 ,b ( add rax, [r14 - 8] )
         73 ,b -125 ,b -18 ,b 8 ,b ( sub r14, 8 )
         65 ,b -119 ,b -121 ,b lSP ,d ( mov [r15 + lSP], eax )
     ]
 ;
 
-( r | n -D- :; Release space for n locals on the local stack. )
+( r | n -D- :; Release space for n locals on the local stack. Reference: `QWORD_T * lSP @d - lSP !d` )
 : LEAVE_FRAME
     [
         65 ,b -64 ,b 102 ,b -8 ,b 3 ,b ( shl [r14 - 8], 3 )
-        65 ,b -117 ,b  -121 ,b lSP ,d ( mov eax, [r15 + lSP] )
+        65 ,b -117 ,b -121 ,b lSP ,d ( mov eax, [r15 + lSP] )
         73 ,b 43 ,b 70 ,b -8 ,b ( sub rax, [r14 - 8] )
         73 ,b -125 ,b -18 ,b 8 ,b ( sub r14, 8 )
         65 ,b -119 ,b -121 ,b lSP ,d ( mov [r15 + lSP], eax )
@@ -36,12 +36,26 @@ DWORD_T TMPVAR LOCAL_START
 
 ( Runtime functions for REF and VAL, we use this instead of directly compiling the
 calls to keep generated code from being too big at the cost more call overhead. )
+
+( reference: `lSP @d + !q` )
 : __TO_RUNTIME
-    lSP @d + !q
+    [
+        65 ,b -117 ,b -121 ,b lSP ,d ( mov eax, [r15 + lSP] )
+        73 ,b 3 ,b 70 ,b -8 ,b ( add rax, [r14 - 8] )
+        73 ,b -117 ,b 94 ,b -16 ,b ( mov rbx, [r14 - 16] )
+        73 ,b -119 ,b 28 ,b 7 ,b ( mov [r15 + rax], rbx )
+        73 ,b -125 ,b -18 ,b 16 ,b ( sub r14, 16 )
+    ]
 ;
 
+( reference `lSP @d + @q` )
 : __LOCAL_RUNTIME
-    lSP @d + @q
+    [
+        65 ,b -117 ,b -121 ,b lSP ,d ( mov eax, [r15 + lSP] )
+        73 ,b 3 ,b 70 ,b -8 ,b ( add rax, [r14 - 8] )
+        73 ,b -117 ,b 28 ,b 7 ,b ( mov rbx, [r15 + rax] )
+        73 ,b -119 ,b 94 ,b -8 ,b ( mov [r14 - 8], rbx )
+    ]
 ;
 
 ( Internal implementations of REF and VAL that take string pointers. )
