@@ -28,11 +28,15 @@ first reset all important stdlib state before calling INTERPRET. )
     MACRO_HERE_START MACRO_HERE !d
 ;
 
-: INIT
+: CORE_INIT
     CTX_INIT
     MACRO_INIT
     HEAP_INIT
     STDCO_INIT
+;
+
+: INIT
+    CORE_INIT
     0 ['] INTERPRET LITERAL SPAWN_TASK
     DUP -1 == IF
         r" FATAL: Could not allocate memory for REPL task." PRINTLN EXIT
