@@ -64,6 +64,33 @@ spin-waiting around EAGAIN on sys_read, so I'll need to think up something
 there, maybe just use sys_nanosleep in the synchronous version, and SUSPEND
 instead of YIELD in the async version together with a priviliged task that
 calls epoll_wait().
+^^^^^^^ -- Revision 1; postponing work on this because it turns out we can't
+properly have tasks suspend and wake up later due to the current design of
+<stdco.f>, see the issue below this one for more details.
+
 -------------------------------------------------------------------------------
 STATE: OPEN/STARTED/POSTPONED | PRIORITY: MEDIUM
+-------------------------------------------------------------------------------
+
+-------------------------------------------------------------------------------
+ISSUE: <stdco.f> does not actually allow asynchronous IO in practice because
+there's no way for a manager task to actually get notified when things happen
+to the managed tasks.
+
+PROPOSED FIX: Slightly change it so instead of the runnable field also having
+an fd, there are instead two new callback fields, onsuspend, and onkill. Then
+SUSPEND can call the task's onsuspend xt to properly register all necessary
+state for suspending a task ( set by the task manager, such as an asyncio
+waker task ), and END_TASK will call onkill before actually freeing memory and
+unlinking the task, onkill then would be a function that deregisters/frees
+manager metadata.
+
+COMPLICATIONS: Since this touches a large amount of the scheduler internals
+it's easy to accidentally get a regression here, we'll need to be careful with
+especially changing all the struct offsets now that there's new fields. Apart
+from that, we need to make sure that the new changes will actually be enough
+to allow asynchronous IO to be implemented in other libraries, and not once
+again "just a bit too little" like the fd field was.
+-------------------------------------------------------------------------------
+STATE: OPEN | PRIORITY: MEDIUM-HIGH
 -------------------------------------------------------------------------------
