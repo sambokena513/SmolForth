@@ -15,11 +15,17 @@
     } Handler; // 16 bytes in total
 )
 
+
+(
+    Note: all of this is possible to implement in Forth directly, but as exceptions
+    are a large part of the core language, to reduce overhead in TRY blocks we keep
+    all the operations that are encountered on the non-exceptional path almost entirely
+    native.
+)
+
 ( Push, pop, and read a 32-bit value respectively from the exception stack. )
 
-( Reference implementation: `: >E eSP @d !d eSP @d 4 + eSP !d ;`, while this is possible to
-write in Forth, moving it into assembly made an exception overhead benchmark nearly twice as fast [from 5.7 to 3.7 seconds],
-so it really is worth it to keep this native. )
+( Reference implementation: `: >E eSP @d !d eSP @d 4 + eSP !d ;` )
 : >E
     [
         65 ,b -117 ,b -121 ,b eSP ,d ( mov eax, [r15 + esP] )
@@ -35,19 +41,39 @@ so it really is worth it to keep this native. )
 
 
 ( r | -E- handler | handler-addr -D- )
-( TODO: this could also be moved into assembly, we can keep the rest as-is since
-the exceptional path isn't too common, but since PUSH_HANDLER gets called in the normal
-path too, it's a large source of overhead. )
 : PUSH_HANDLER
     >E
-    rSP@ BASE SWAP - 8 + >E
-    lSP @d >E
-    dSP@ BASE SWAP - >E
+
+    ( reference: `rSP@ BASE SWAP - 8 +` )
+    [
+        72 ,b -119 ,b -32 ,b ( mov rax, rsp )
+        76 ,b 41 ,b -8 ,b ( sub rax, r15 )
+        73 ,b -119 ,b 6 ,b ( mov [r14], rax )
+        73 ,b -125 ,b -58 ,b 8 ,b ( add r14, 8 )
+    ] >E
+
+    ( reference: `lSP @d` )
+    [
+        65 ,b -117 ,b -121 ,b lSP ,d ( mov eax, [r15 + lsP] )
+        73 ,b -119 ,b 6 ,b ( mov [r14], rax )
+        73 ,b -125 ,b -58 ,b 8 ,b ( add r14, 8 )
+    ] >E
+
+    ( reference: `dSP@ BASE SWAP -` )
+    [
+        76 ,b -119 ,b -16 ,b ( mov rax, r14 )
+        76 ,b 41 ,b -8 ,b ( sub rax, r15 )
+        73 ,b -119 ,b 6 ,b ( mov [r14], rax )
+        73 ,b -125 ,b -58 ,b 8 ,b ( add r14, 8 )
+    ] >E
 ;
 
+( Reference implementation: `: POP_HANDLER eSP @d -16 + eSP !d ;` )
 ( r | handler -E- )
 : POP_HANDLER
-    eSP @d -16 + eSP !d
+    [
+        65 ,b -125 ,b -81 ,b eSP ,d 16 ,b ( sub dword [r15 + eSP], 16 )
+    ]
 ;
 
 ( c | -C- try-sys )
