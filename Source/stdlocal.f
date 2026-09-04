@@ -60,7 +60,6 @@ into that local at runtime. )
 
 DWORD_T TMPVAR LITa1
 DWORD_T TMPVAR LITa2
-DWORD_T TMPVAR LITa3
 DWORD_T TMPVAR CALa
 
 ( Start a function definition, locals and args may only be used within functions, not colon definitions. )
@@ -74,26 +73,15 @@ DWORD_T TMPVAR CALa
     FUNC_NAME_BUF WNB STRCPY
 
     (
-        Word template, the 0 literals are placeholders for ENDFUNC to patch with the local count
-        Essentially this template just makes sure that both local and nonlocal control-flow cannot exit a
-        function without properly allocating and then freeing its locals.
+        We make the function get called through a trampoline
+        that makes sure locals are properly allocated and freed.
     )
 
-    COMPILE TRY
-
-        HERE LITa1 !d 0 COMPILE LITERAL
-        ['] ENTER_FRAME LITERAL ECR32
-        HERE CALa !d -24 ,b 0 ,d ( compile a placeholder call )
-        HERE LITa2 !d 0 COMPILE LITERAL
-        ['] LEAVE_FRAME LITERAL ECR32
-
-    COMPILE CATCH
-
-        HERE LITa3 !d 0 COMPILE LITERAL
-        ['] LEAVE_FRAME LITERAL ECR32
-        ['] THROW LITERAL ECR32
-
-    COMPILE ENDTRY
+    HERE LITa1 !d 0 COMPILE LITERAL
+    ['] ENTER_FRAME LITERAL ECR32
+    HERE CALa !d -24 ,b 0 ,d ( compile a placeholder call )
+    HERE LITa2 !d 0 COMPILE LITERAL
+    ['] LEAVE_FRAME LITERAL ECR32
 
     -61 ,b ( compile a ret )
 
@@ -110,7 +98,6 @@ DWORD_T TMPVAR CALa
     ( patch literals in start snippet to the actual local count )
     LOCAL_COUNT @w LITa1 @d 2 + !q
     LOCAL_COUNT @w LITa2 @d 2 + !q
-    LOCAL_COUNT @w LITa3 @d 2 + !q
     
     ( finish definition )
     WNB FUNC_NAME_BUF STRCPY
@@ -119,7 +106,7 @@ DWORD_T TMPVAR CALa
 
 FORGET LITa1 POP
 FORGET LITa2 POP
-FORGET LITa3 POP
+FORGET CALa POP
 
 ( Parse and create a local. )
 : local:
