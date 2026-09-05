@@ -14,6 +14,8 @@
             Task *prev;
             i64 timestamp;
             i32 runnable;
+            xt onsuspend;
+            xt onkill;
             Context ctx;
         } Task;
 
