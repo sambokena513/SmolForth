@@ -153,6 +153,13 @@ HERE " ------------------" 0 ,b  MACROS CONSTANT PADDING_STRING ENDMACROS
     REPEAT POP
 ;
 
+( r | task -D- taskid :; Given a task pointer, return its ID [ index ]. Note that these are not *unique* IDs,
+once a task is freed another can get its ID. )
+: TASKID
+    TASK_SLAB @d slab.mem_start FIELD @d SWAP -
+    TASK_SIZE SWAP /
+;
+
 ( r | task -D- )
 : UNLINK_TASK
     DUP task.runnable FIELD @d IF

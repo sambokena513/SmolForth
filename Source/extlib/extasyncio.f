@@ -12,15 +12,15 @@ fds for any operation that normally could block. )
     We accomplish these things by giving each possible task an index in an array with 65536 elements.
     Each entry is 40 bits, the first 8 bits are the task's state:
 
-        -1 = Runnable
-        0 = Invalid/No task
+        -2 = Runnable, no fd yet.
+        -1 = Invalid
+        0 = Runnable, fd registered
         1 = Waiting on fd
-        Other values are reserved for future extensions.
 
-    And the 32-bit field is an fd the task is waiting on, its value is irrelevant if the first field is -1 or 0.
+    And the 32-bit field is an fd the task is waiting on, its value is irrelevant if the first field is negative.
 
     To ensure these fields get properly updated, we provide a wrapper over SPAWN_TASK called ASYNC_SPAWN_TASK that sets the new task's onsuspend and onkill fields
-    as well as initializing its entry to be -1 for runnable.
+    as well as initializing its entry to be -2 for RUNNABLENOFD.
 
     The onsuspend field is set to a function that takes an fd and events as args through the control-flow stack, and registers or rearms it with epoll_ctl, as well
     as setting its entry to be marked as waiting on that fd.
@@ -40,6 +40,7 @@ POPBUFXT IFDEF EXTASYNCIO_M MACROS CREATE EXTASYNCIO_M
 
 5 CONSTANT ENTRY_SIZE
 65536 CONSTANT ENTRY_COUNT
+1024 CONSTANT MAXEVENTS
 
 0 CONSTANT entry.state ( byte_t )
 1 CONSTANT entry.fd ( dword_t )
@@ -47,14 +48,17 @@ POPBUFXT IFDEF EXTASYNCIO_M MACROS CREATE EXTASYNCIO_M
 0 CONSTANT epoll_event.events
 4 CONSTANT epoll_event.data
 
--1 CONSTANT RUNNABLE
-0 CONSTANT INVALID
-1 CONSTANT WAITING
+-2 CONSTANT RUNNABLENOFD ( initial state for an entry )
+-1 CONSTANT INVALID ( no task )
+0 CONSTANT RUNNABLE ( means that the fd field is valid but needs to be rearmed )
+1 CONSTANT WAITING ( fd is active and task is waiting on it )
 
+( epoll_ctl operations )
 1 CONSTANT EPOLL_CTL_ADD
 2 CONSTANT EPOLL_CTL_DEL
 3 CONSTANT EPOLL_CTL_MOD
 
+( events )
 1 CONSTANT EPOLLIN
 2 CONSTANT EPOLLPRI
 4 CONSTANT EPOLLOUT
@@ -67,12 +71,11 @@ POPBUFXT IFDEF EXTASYNCIO_M MACROS CREATE EXTASYNCIO_M
 1024 CONSTANT EPOLLMSG
 8192 CONSTANT EPOLLRDHUP
 
+( control flags )
 28 1 << CONSTANT EPOLLEXCLUSIVE
 29 1 << CONSTANT EPOLLWAKEUP
 30 1 << CONSTANT EPOLLONESHOT
 31 1 << CONSTANT EPOLLET
-
-1024 CONSTANT MAXEVENTS
 
 ENDMACROS
 
@@ -108,11 +111,29 @@ epfd arg is EPFD, and count is MAXEVENTS )
     POP
 ;
 
-( r | task -D- taskid :; Given a task pointer, return its ID [ index ]. Note that these are not *unique* IDs,
-once a task is freed another can get its ID. )
-: TASKID
-    TASK_SLAB @d slab.mem_start FIELD @d SWAP -
-    TASK_SIZE SWAP /
+( Clear a task entry, deregistering its fd if it has one. )
+FUNCTION ASYNCIO_ONKILL { task_entry }
+    CURR_TASK @d TASKID ENTRY_SIZE ENTRY_ARR @d INDEX
+    TO task_entry
+
+    ( if fd is registered, get rid of it so we don't make the kernel leak memory )
+    task_entry entry.state FIELD @b +? IF
+        task_entry entry.fd FIELD @d
+        EPOLL_CTL_DEL
+        ASYNCIO_EPOLL_CTL
+    THEN
+
+    ( since the task died the entry is no longer valid,
+    note that we don't close the fd, that's the job of the task,
+    and there are plenty of reason you'd want a task that died to
+    keep the fd around, such as because *it doesn't need to own it* )
+    INVALID task_entry !b
+ENDFUNC
+
+( r | fd events -C- :; Call epoll_ctl with EPOLL_CTL_MOD or EPOLL_CTL_ADD with given fd and events on the control
+flow stack. )
+: ASYNCIO_ONSUSPEND
+    TODO" register or rearm an fd with epoll_ctl, if there is a *different* fd already registered, first get rid of that one"
 ;
 
 ( A task that should run for the whole lifetime of a program using the async system, WAKER attempts
@@ -120,18 +141,24 @@ to wake suspended tasks if their fds are ready everytime execution reaches it, a
 thread if there are no other runnable tasks to make sure we don't max out the CPU core Forth is running
 on if there's nothing to be done. )
 : WAKER
-    TODO" initialize some state, then enter an infinite loop of calling epoll_wait and yielding."
+    TODO" infinite loop of calling epoll_wait and yielding."
 ;
 
-( Spawn a task that behaves asynchronously on IO. )
+( Spawn a task that behaves asynchronously on IO, for stack effect see SPAWN_TASK in <stdco.f>. )
 : ASYNC_SPAWN_TASK
-    TODO" spawn a task using SPAWN_TASK, then set up its metadata"
+    SPAWN_TASK DUP -1 == IF EXIT THEN ( spawn the task )
+    RUNNABLENOFD OVER TASKID ENTRY_SIZE ENTRY_ARR @d INDEX !b ( task starts as runnable with no fd registered )
+
+    ( set callbacks )
+    ['] ASYNCIO_ONKILL LITERAL OVER task.onkill FIELD !d
+    ['] ASYNCIO_ONSUSPEND LITERAL OVER task.onsuspend FIELD !d
 ;
 
-( Start the async system. Intended to be used in an INIT function after CORE_INIT for programs that use asyncio. )
+( Start the async system with a first task and enter it. Intended to be used in an INIT function after CORE_INIT for programs that use asyncio. )
 : ASYNC_START
     0 ['] WAKER LITERAL SPAWN_TASK -1 == IF EXC_NOMEM THROW THEN
-    ASYNC_SPAWN_TASK
+    ASYNC_SPAWN_TASK DUP -1 == IF POP EXC_NOMEM THROW THEN
+    SWITCH_TASK
 ;
 
 : ASYNCIO_INIT
