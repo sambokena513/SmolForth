@@ -29,8 +29,11 @@ fds for any operation that normally could block. )
     interest list.
 )
 
-( so we get the exception value macros )
+( since these are stdlib modules we already have their functions,
+reincluding them just serves to give us their macros too )
 INCLUDE ./stdlib/stdexcept.f
+INCLUDE ./stdlib/stdslab.f
+INCLUDE ./stdlib/stdco.f
 
 ( exit if macros are already defined [ you can do FORGET EXTASYNCIO_M POP to include them again ] )
 POPBUFXT IFDEF EXTASYNCIO_M MACROS CREATE EXTASYNCIO_M
@@ -41,16 +44,76 @@ POPBUFXT IFDEF EXTASYNCIO_M MACROS CREATE EXTASYNCIO_M
 0 CONSTANT entry.state ( byte_t )
 1 CONSTANT entry.fd ( dword_t )
 
+0 CONSTANT epoll_event.events
+4 CONSTANT epoll_event.data
+
 -1 CONSTANT RUNNABLE
 0 CONSTANT INVALID
 1 CONSTANT WAITING
+
+1 CONSTANT EPOLL_CTL_ADD
+2 CONSTANT EPOLL_CTL_DEL
+3 CONSTANT EPOLL_CTL_MOD
+
+1 CONSTANT EPOLLIN
+2 CONSTANT EPOLLPRI
+4 CONSTANT EPOLLOUT
+8 CONSTANT EPOLLERR
+16 CONSTANT EPOLLHUP
+64 CONSTANT EPOLLRDNORM
+128 CONSTANT EPOLLRDBAND
+256 CONSTANT EPOLLWRNORM
+512 CONSTANT EPOLLWRBAND
+1024 CONSTANT EPOLLMSG
+8192 CONSTANT EPOLLRDHUP
+
+28 1 << CONSTANT EPOLLEXCLUSIVE
+29 1 << CONSTANT EPOLLWAKEUP
+30 1 << CONSTANT EPOLLONESHOT
+31 1 << CONSTANT EPOLLET
+
+1024 CONSTANT MAXEVENTS
 
 ENDMACROS
 
 ( normal include guard )
 POPBUFXT IFDEF EXTASYNCIO_F CREATE EXTASYNCIO_F
 
-DWORD_T VARIABLE ENTRY_ARR
+DWORD_T TMPVAR ENTRY_ARR
+DWORD_T TMPVAR EPFD
+DWORD_T QWORD_T + TMPVAR EPOLL_EVENT_CTL ( epoll_event struct for epoll_ctl )
+DWORD_T TMPVAR EPOLL_EVENTS_WAIT ( epoll_event array for epoll_wait )
+
+: EPOLL_CREATE
+    ( size argument is ignored, but for compatibility with
+    older linux versions we give the size hint anyway )
+    1024 213 #SYSCALL1
+;
+
+( r | timeout -D- nfds :; Call epoll_wait with statically known args, except for timeout. Returns events into EPOLL_EVENTS_WAIT,
+epfd arg is EPFD, and count is MAXEVENTS )
+: ASYNCIO_EPOLL_WAIT
+    MAXEVENTS
+    EPOLL_EVENTS_WAIT @d BASE +
+    EPFD @d
+    232 #SYSCALL4
+;
+
+( r | fd op -D- :; Call epoll_ctl with statically known epfd and events. )
+: ASYNCIO_EPOLL_CTL
+    EPOLL_EVENT_CTL @d BASE +
+    -ROT
+    EPFD @d
+    233 #SYSCALL4
+    POP
+;
+
+( r | task -D- taskid :; Given a task pointer, return its ID [ index ]. Note that these are not *unique* IDs,
+once a task is freed another can get its ID. )
+: TASKID
+    TASK_SLAB @d slab.mem_start FIELD @d SWAP -
+    TASK_SIZE SWAP /
+;
 
 ( A task that should run for the whole lifetime of a program using the async system, WAKER attempts
 to wake suspended tasks if their fds are ready everytime execution reaches it, and blocks the whole
@@ -67,13 +130,29 @@ on if there's nothing to be done. )
 
 ( Start the async system. Intended to be used in an INIT function after CORE_INIT for programs that use asyncio. )
 : ASYNC_START
-    0 ['] WAKER LITERAL SPAWN_TASK -1 == IF r" Couldn't start WAKER task." EXIT THEN
+    0 ['] WAKER LITERAL SPAWN_TASK -1 == IF EXC_NOMEM THROW THEN
     ASYNC_SPAWN_TASK
 ;
 
 : ASYNCIO_INIT
+    ( make epfd that will be used by the waker )
+    EPOLL_CREATE EPFD !d 
+
+    ( allocate memory for returned events )
+    [ 4096 12 1024 * / ] LITERAL pALLOC DUP -1 == IF
+        POP EXC_NOMEM THROW
+    THEN EPOLL_EVENTS_WAIT !d
+
+    ( allocate memory for task entries )
     [ 4096 ENTRY_COUNT ENTRY_SIZE * / ] LITERAL
     pALLOC DUP -1 == IF
         POP EXC_NOMEM THROW
-    THEN
+    THEN ENTRY_ARR !d
+
+    ( initialize task entries )
+    0 BEGIN
+    DUP ENTRY_COUNT > WHILE
+        INVALID OVER ENTRY_SIZE ENTRY_ARR @d INDEX !b
+        1 +
+    REPEAT POP
 ;
