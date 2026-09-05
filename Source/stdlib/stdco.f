@@ -235,7 +235,10 @@ HERE " ------------------" 0 ,b  MACROS CONSTANT PADDING_STRING ENDMACROS
 
     DUP UNLINK_TASK
     GET_NEXT_TASK SWAP
-    LINK_SUSPENDED
+    DUP LINK_SUSPENDED
+
+    ( mark as suspended )
+    0 SWAP task.runnable FIELD !d
 
     DUP 0 == IF
         POP MAIN_CTX SWITCH_CTX EXIT
