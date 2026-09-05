@@ -2,6 +2,8 @@
 
 ( <stdlocal.f> :: Define words with access to local variables that don't inhibit recursion, and arguments, which are locals that automatically bind. )
 
+CLEAR WORD STDLOCAL_F FIND ~ POPBUFXT EXEC_IF CREATE STDLOCAL_F
+
 WORD_T TMPVAR LOCAL_COUNT
 DWORD_T TMPVAR LOCAL_START
 255 TMPVAR FUNC_NAME_BUF

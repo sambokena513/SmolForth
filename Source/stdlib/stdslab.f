@@ -1,4 +1,4 @@
-( Dependencies: bootstrap.f, stdstring.f, stdassert.f, stdctx.f, stdexcept.f, stdio.f, stddict.f, stdmem.f )
+( Dependencies: bootstrap.f, stdstring.f, stdassert.f, stdctx.f, stdexcept.f, stdio.f, stddict.f, stdmem.f, stdinclude.f )
 
 ( <stdslab.f> :; Basic slab allocator, gets backing memory from the pALLOC/pFREE API, configurable size and object size. )
 
@@ -18,7 +18,7 @@
         } Slab;
 )
 
-MACROS
+POPBUFXT IFDEF STDSLAB_M MACROS CREATE STDSLAB_M
 
 0 CONSTANT slab.max_obj_count
 4 CONSTANT slab.obj_size
@@ -29,6 +29,8 @@ MACROS
 24 CONSTANT slab.free_stack
 
 ENDMACROS
+
+POPBUFXT IFDEF STDSLAB_F CREATE STDSLAB_F
 
 ( temporary variable to make the code a bit cleaner )
 DWORD_T TMPVAR SLAB

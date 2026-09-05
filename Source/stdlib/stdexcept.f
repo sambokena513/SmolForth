@@ -23,6 +23,15 @@
     native.
 )
 
+( Standard exception values. )
+CLEAR WORD STDEXCEPT_M FIND ~ POPBUFXT EXEC_IF MACROS CREATE STDEXCEPT_M
+
+1 CONSTANT EXC_NOMEM
+
+ENDMACROS
+
+CLEAR WORD STDEXCEPT_F FIND ~ POPBUFXT EXEC_IF CREATE STDEXCEPT_F
+
 ( Push, pop, and read a 32-bit value respectively from the exception stack. )
 
 ( Reference implementation: `: >E eSP @d !d eSP @d 4 + eSP !d ;` )
@@ -122,9 +131,3 @@ CREATE ENDTRY ALIAS THEN IMMEDIATE
 
 ( Note that in our exceptions we consider 0 to be an invalid value, otherwise we wouldn't be able to implement DYN_CATCH properly. )
 
-( Add new standard exception values here: )
-MACROS
-
-1 CONSTANT EXC_NOMEM
-
-ENDMACROS

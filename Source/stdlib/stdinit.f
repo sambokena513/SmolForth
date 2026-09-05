@@ -3,6 +3,8 @@
 ( <stdinit.f> :; INIT function that can be used with SET_INIT to make interactive images that
 first reset all important stdlib state before calling INTERPRET. )
 
+POPBUFXT IFDEF STDINIT_F CREATE STDINIT_F
+
 : CTX_INIT
     ( make sure that upon starting we are in the main context )
     MAIN_CTX CTX !d

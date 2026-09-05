@@ -1,5 +1,3 @@
-( Dependencies: <stdlib> )
-
 ( <extasyncio.f> :; This module implements a basic WAKER task that whenever it gets a chance to execute, calls epoll_wait and attempts to wake suspended tasks waiting on IO. 
 For tasks to properly work with the waker they need to be spawned using the library-provided ASYNC_SPAWN_TASK wrapper over SPAWN_TASK, and use the ASYNC_* IO functions with nonblocking
 fds for any operation that normally could block. )
@@ -31,13 +29,17 @@ fds for any operation that normally could block. )
     interest list.
 )
 
-MACROS
+( so we get the exception value macros )
+INCLUDE ./stdlib/stdexcept.f
 
-5 CONSTANT TASK_ENTRY_SIZE
+( exit if macros are already defined [ you can do FORGET EXTASYNCIO_M POP to include them again ] )
+POPBUFXT IFDEF EXTASYNCIO_M MACROS CREATE EXTASYNCIO_M
+
+5 CONSTANT ENTRY_SIZE
 65536 CONSTANT ENTRY_COUNT
 
-0 CONSTANT entry.state
-1 CONSTANT entry.fd
+0 CONSTANT entry.state ( byte_t )
+1 CONSTANT entry.fd ( dword_t )
 
 -1 CONSTANT RUNNABLE
 0 CONSTANT INVALID
@@ -45,21 +47,33 @@ MACROS
 
 ENDMACROS
 
-DWORD_T TMPVAR ENTRY_ARR
+( normal include guard )
+POPBUFXT IFDEF EXTASYNCIO_F CREATE EXTASYNCIO_F
 
+DWORD_T VARIABLE ENTRY_ARR
+
+( A task that should run for the whole lifetime of a program using the async system, WAKER attempts
+to wake suspended tasks if their fds are ready everytime execution reaches it, and blocks the whole
+thread if there are no other runnable tasks to make sure we don't max out the CPU core Forth is running
+on if there's nothing to be done. )
 : WAKER
     TODO" initialize some state, then enter an infinite loop of calling epoll_wait and yielding."
 ;
 
+( Spawn a task that behaves asynchronously on IO. )
 : ASYNC_SPAWN_TASK
     TODO" spawn a task using SPAWN_TASK, then set up its metadata"
 ;
 
+( Start the async system. Intended to be used in an INIT function after CORE_INIT for programs that use asyncio. )
 : ASYNC_START
     0 ['] WAKER LITERAL SPAWN_TASK -1 == IF r" Couldn't start WAKER task." EXIT THEN
     ASYNC_SPAWN_TASK
 ;
 
 : ASYNCIO_INIT
-    TODO" allocate entry array"
+    [ 4096 ENTRY_COUNT ENTRY_SIZE * / ] LITERAL
+    pALLOC DUP -1 == IF
+        POP EXC_NOMEM THROW
+    THEN
 ;

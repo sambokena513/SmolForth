@@ -4,6 +4,8 @@
 Note that to avoid a dependency on stdio, as IO can fail and stdassert is meant for handling failures, 
 stdassert defines its own minimal PRINTLN that calls sys_exit on failure. )
 
+CLEAR WORD STDASSERT_F FIND ~ POPBUFXT EXEC_IF CREATE STDASSERT_F
+
 : STDASSERTF_PRINT
     ( call sys_write with the string pointer and length )
     DUP STRLEN DUP ROT BASE +
@@ -15,7 +17,7 @@ stdassert defines its own minimal PRINTLN that calls sys_exit on failure. )
     THEN
 ;
 
-2 VARIABLE STDASSERTF_NEWLINE
+2 TMPVAR STDASSERTF_NEWLINE
 10 STDASSERTF_NEWLINE !b
 0 STDASSERTF_NEWLINE 1 + !b
 

@@ -128,11 +128,8 @@ This allows user code to use dynamic memory or to implement more sophisticated a
             be O[1].
 )
 
-( 1.5GB heap )
-512 1024 1024 * * CONSTANT HEAP_BASE
-
 ( Some helpers to make the syntax for the extent struct a bit nicer. )
-MACROS
+CLEAR WORD STDMEM_M FIND ~ POPBUFXT EXEC_IF MACROS CREATE STDMEM_M
 
 0 CONSTANT extent.page_count
 4 CONSTANT extent.prev
@@ -141,6 +138,11 @@ MACROS
 16 CONSTANT extent.next_bucket
 
 ENDMACROS
+
+CLEAR WORD STDMEM_F FIND ~ POPBUFXT EXEC_IF CREATE STDMEM_F
+
+( 1.5GB heap )
+512 1024 1024 * * CONSTANT HEAP_BASE
 
 ( 12 i32 slots so that's 48 bytes of external metadata for the allocator. )
 DWORD_T VARIABLE EXTENT_LIST

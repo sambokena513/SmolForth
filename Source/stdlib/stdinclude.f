@@ -2,7 +2,7 @@
 
 ( <stdinclude.f> :; This file implements the ability to include source files such as libraries in files or the REPL. )
 
-MACROS
+CLEAR WORD STDINCLUDE_M FIND ~ POPBUFXT EXEC_IF MACROS CREATE STDINCLUDE_M
 
 0 CONSTANT buf.tib
 255 CONSTANT buf.idx
@@ -12,6 +12,8 @@ MACROS
 262 CONSTANT buf.parent
 
 ENDMACROS
+
+CLEAR WORD STDINCLUDE_F FIND ~ POPBUFXT EXEC_IF CREATE STDINCLUDE_F
 
 ( r | tib -D- :; Print an input buffer's fields. )
 : PRINT_INPBUF

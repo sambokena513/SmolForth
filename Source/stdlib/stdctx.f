@@ -3,6 +3,8 @@
 ( <stdctx.f> :; Execution contexts and the ability to switch between them, as
 well as various related utilities. )
 
+CLEAR WORD STDCTX_F FIND ~ POPBUFXT EXEC_IF CREATE STDCTX_F
+
 ( Remember that because CTX is a VARIABLE it means to get the first field,
 you'd do `CTX @d @d`, not `CTX @d`, or to get an offset into the third field,
 `CTX @d ctx.eSP_BASE FIELD` )

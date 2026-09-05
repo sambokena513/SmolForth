@@ -2,6 +2,8 @@
 
 ( <stdio.f> :; This file implements IO functions so users don't need to manually invoke syscalls. )
 
+CLEAR WORD STDIO_F FIND ~ POPBUFXT EXEC_IF CREATE STDIO_F
+
 ( Helpers for invoking syscalls with set argument counts. )
 : SYSCALL0 >C 0 DUP DUP DUP DUP DUP C> SYSCALL ;
 : SYSCALL1 >C >C 0 DUP DUP DUP DUP C> C> SYSCALL ;

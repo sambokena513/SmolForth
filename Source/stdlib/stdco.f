@@ -1,4 +1,4 @@
-( Dependencies: bootstrap.f, stdstring.f, stdassert.f, stdctx.f, stdexcept.f, stdio.f, stddict.f, stdmem.f, stdslab.f )
+( Dependencies: bootstrap.f, stdstring.f, stdassert.f, stdctx.f, stdexcept.f, stdio.f, stddict.f, stdmem.f, stdinclude.f, stdslab.f )
 
 ( <stdco.f> :; Concurrency in the form of cooperative multitasking. )
 
@@ -53,6 +53,31 @@ You can register callbacks in the forms
         56 - DWORD_T ctx.lSP
 )
 
+POPBUFXT IFDEF STDCO_M MACROS CREATE STDCO_M
+
+65536 CONSTANT MAX_TASKS
+60 CONSTANT TASK_SIZE
+
+0 CONSTANT task.next
+4 CONSTANT task.prev
+8 CONSTANT task.timestamp ( when we should switch tasks, ie. if rdtsc >= task.timestamp we yield )
+16 CONSTANT task.runnable
+20 CONSTANT task.onsuspend
+24 CONSTANT task.onkill
+28 CONSTANT task.ctx
+28 CONSTANT task.ctx.dSP_BASE
+32 CONSTANT task.ctx.rSP_BASE
+36 CONSTANT task.ctx.eSP_BASE
+40 CONSTANT task.ctx.lSP_BASE
+44 CONSTANT task.ctx.dSP
+48 CONSTANT task.ctx.rSP
+52 CONSTANT task.ctx.eSP
+56 CONSTANT task.ctx.lSP
+
+ENDMACROS
+
+POPBUFXT IFDEF STDCO_F CREATE STDCO_F
+
 ( small wrapper around rdtsc )
 : RDTSC
     [
@@ -85,28 +110,6 @@ programs or ones that need to be more responsive you'd want this lower. Such as
 maybe 16.6ms for a game loop, or 1ms for a multi-client server. Note that this
 would of course increase scheduler overhead since YIELD is pretty expensive. )
 QWORD_T VARIABLE CYCLE_SPEED GET_STSCVAL CYCLE_SPEED !q
-65536 CONSTANT MAX_TASKS
-60 CONSTANT TASK_SIZE
-
-MACROS
-
-0 CONSTANT task.next
-4 CONSTANT task.prev
-8 CONSTANT task.timestamp ( when we should switch tasks, ie. if rdtsc >= task.timestamp we yield )
-16 CONSTANT task.runnable
-20 CONSTANT task.onsuspend
-24 CONSTANT task.onkill
-28 CONSTANT task.ctx
-28 CONSTANT task.ctx.dSP_BASE
-32 CONSTANT task.ctx.rSP_BASE
-36 CONSTANT task.ctx.eSP_BASE
-40 CONSTANT task.ctx.lSP_BASE
-44 CONSTANT task.ctx.dSP
-48 CONSTANT task.ctx.rSP
-52 CONSTANT task.ctx.eSP
-56 CONSTANT task.ctx.lSP
-
-ENDMACROS
 
 DWORD_T VARIABLE TASK_SLAB 0 TASK_SLAB !d
 DWORD_T VARIABLE RUNNABLE_LIST 0 RUNNABLE_LIST !d
@@ -374,7 +377,7 @@ and arrange for switching to its context to execute that xt with provided argume
     ( initialize task slab so we can allocate tasks )
     TASK_SIZE MAX_TASKS MAKE_SLAB
     DUP -1 == IF
-        EXIT
+        POP EXC_NOMEM THROW
     THEN
     TASK_SLAB !d
 

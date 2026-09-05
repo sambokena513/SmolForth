@@ -3,6 +3,8 @@
 ( <stddict.f> :; This file implements various dictionary introspection and modification
 words for easier metaprogramming. )
 
+CLEAR WORD STDDICT_F FIND ~ POPBUFXT EXEC_IF CREATE STDDICT_F
+
 ( Print a dictionary entry's fields. )
 : INTROSPECT
     r" link: " PRINT DUP @d .
