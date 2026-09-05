@@ -55,6 +55,9 @@ YIELD into the interpreter.
 PROPOSED FIX: Make stdin nonblocking and then make the synchronous version of
 INTERPRET handle EAGAIN and retry while implementing a separate
 ASYNC_INTERPRET that yields on EAGAIN instead.
+^^^^^^^ -- Revision 2; We can't simply YIELD on EAGAIN, we'll need to register
+the fd with epoll_ctl (or rearm it if it was already in the interest list),
+and then SUSPEND instead.
 
 COMPLICATIONS: Currently this would really mess with the input buffer and
 cause inconsistent behaviour in INTERPRET, we'll need to first implement and
@@ -67,9 +70,17 @@ calls epoll_wait().
 ^^^^^^^ -- Revision 1; postponing work on this because it turns out we can't
 properly have tasks suspend and wake up later due to the current design of
 <stdco.f>, see the issue below this one for more details.
+^^^^^^^ -- Revision 2; I've added callbacks to stdco.f that should make this
+possible, the question is whether I should do this in the stdlib though, or
+make it the first ext*.f module. Perhaps get the very basics; ASYNC_INTERPRET
+and EPOLL_WAKER in stdco.f and the rest can go into the extlib later. This
+lets me make this part of the core language since its relatively important,
+and give support for async IO, but without writing all the wrappers out,
+those'll be in extasyncio.f for example. Anyway, I'm gonna be working on this
+once more.
 
 -------------------------------------------------------------------------------
-STATE: OPEN/STARTED/POSTPONED | PRIORITY: MEDIUM
+STATE: OPEN/STARTED | PRIORITY: MEDIUM
 -------------------------------------------------------------------------------
 
 -------------------------------------------------------------------------------

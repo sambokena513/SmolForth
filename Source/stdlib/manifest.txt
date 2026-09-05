@@ -1,0 +1,12 @@
+stdstring.f
+stdassert.f
+stdctx.f
+stdexcept.f
+stdio.f
+stddict.f
+stdlocal.f
+stdmem.f
+stdinclude.f
+stdslab.f
+stdco.f
+stdinit.f
