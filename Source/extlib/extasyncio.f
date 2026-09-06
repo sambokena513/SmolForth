@@ -110,16 +110,15 @@ epfd arg is EPFD, and count is MAXEVENTS )
     POP
 ;
 
-( Clear a task entry, deregistering its fd if it has one. )
+( r | task -D- :;  Clear a task entry, deregistering its fd if it has one. )
 FUNCTION ASYNCIO_ONKILL { task_entry }
-    CURR_TASK @d TASKID ENTRY_SIZE ENTRY_ARR @d INDEX
+    TASKID ENTRY_SIZE ENTRY_ARR @d INDEX
     TO task_entry
 
     ( if fd is registered, get rid of it so we don't make the kernel leak memory )
     task_entry entry.state FIELD @b +? IF
         task_entry entry.fd FIELD @d
-        EPOLL_CTL_DEL
-        ASYNCIO_EPOLL_CTL
+        EPOLL_CTL_DEL ASYNCIO_EPOLL_CTL
     THEN
 
     ( since the task died the entry is no longer valid,

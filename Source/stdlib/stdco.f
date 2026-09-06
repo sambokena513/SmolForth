@@ -26,8 +26,7 @@
     The `onsuspend` and `onkill` fields are callbacks [ XTs ], they are executed *before* performing the respective operations.
     If either is 0, then it will *not* be called when performing the operation [ default behaviour ], these are intended to be
     set by a "manager" task such as in an async IO library to ensure it knows when events occur and can thus free metadata related to a task.
-    Note that these callbacks should be nullary [ they can use `CURR_TASK @d` to get the task, and then based on that index internal metadata for example,
-    or pass arguments by proxy through a different stack ].
+    Note that onkill receives the task being killed as an argument while onsuspend receives no arguments.
 
     A task's `timestamp` is a TSC value that when reached, means the task has used its alloted run time. This is recalculated
     and set whenever a task is switched *to*, and periodically compared against RDTSC to decide whether CHECKPOINT should make
@@ -294,8 +293,8 @@ data structure mapping task pointers to their fds and have async IO functions ch
             MAIN_CTX SWITCH_CTX
         THEN
     ELSE
-        ( call onkill callback first if needed )
-        DUP task.onkill FIELD @d DUP IF EXECUTE ELSE POP THEN
+        ( call onkill callback with task being killed first if needed )
+        DUP task.onkill FIELD @d DUP IF OVER SWAP EXECUTE ELSE POP THEN
 
         DUP UNLINK_TASK
         DUP task.ctx.dSP_BASE FIELD @d 6 SWAP pFREE
