@@ -239,11 +239,10 @@ once a task is freed another can get its ID. )
 
 ( r | -D- :; Suspend the current task and switch to another runnable one. If there are no runnable tasks to switch to, exit the scheduler. )
 : SUSPEND
-    CURR_TASK @d
-
     ( first execute the callback if it exists )
-    DUP task.onsuspend FIELD @d DUP IF EXECUTE ELSE POP THEN
+    CURR_TASK @d task.onsuspend FIELD @d DUP IF EXECUTE ELSE POP THEN
 
+    CURR_TASK @d
     DUP UNLINK_TASK
     GET_NEXT_TASK SWAP
     DUP LINK_SUSPENDED

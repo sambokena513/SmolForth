@@ -141,21 +141,31 @@ FUNCTION ASYNCIO_ONSUSPEND
     events PEEK EPOLL_EVENT_CTL @d epoll_event.events FIELD !d
     CURR_TASK @d EPOLL_EVENT_CTL @d epoll_event.data FIELD !q
 
-    ( positive state values mean the fd is relevant,
-    negative mean there is no currently registered fd. )
-    task_entry entry.state FIELD @b +? IF
-        task_entry entry.fd FIELD @d fd == IF
-            ( if fds are equal it means we can rearm that one )
-            fd EPOLL_CTL_MOD ASYNCIO_EPOLL_CTL
+    TRY
+        ( positive state values mean the fd is relevant,
+        negative mean there is no currently registered fd. )
+        task_entry entry.state FIELD @b +? IF
+            task_entry entry.fd FIELD @d fd == IF
+                ( if fds are equal it means we can rearm that one )
+                fd EPOLL_CTL_MOD ASYNCIO_EPOLL_CTL
+            ELSE
+                ( else we have to get rid of the old one and make a new one )
+                task_entry entry.fd FIELD @d EPOLL_CTL_DEL ASYNCIO_EPOLL_CTL
+                fd EPOLL_CTL_ADD ASYNCIO_EPOLL_CTL
+            THEN
         ELSE
-            ( else we have to get rid of the old one and make a new one )
-            task_entry entry.fd FIELD @d EPOLL_CTL_DEL ASYNCIO_EPOLL_CTL
+            ( register new fd )
             fd EPOLL_CTL_ADD ASYNCIO_EPOLL_CTL
         THEN
-    ELSE
-        ( register new fd )
-        fd EPOLL_CTL_ADD ASYNCIO_EPOLL_CTL
-    THEN
+    CATCH ( since we allow arbitrary fds we have to handle ones that epoll doesn't allow )
+        DUP EPERM == IF
+            POP RUNNABLENOFD task_entry entry.state !b
+            ( slightly weird here but we have to not only exit ASYNCIO_ONSUSPEND
+            but also the task scheduler's SUSPEND so the task doesn't get unlinked )
+            rSP@ 16 + rSP!
+        THEN
+        THROW ( if not EPERM, re-throw it )
+    ENDTRY
 
     ( update metadata for the task )
     WAITING task_entry entry.state FIELD !b
