@@ -89,7 +89,8 @@ DWORD_T TMPVAR EPOLL_EVENTS_WAIT ( epoll_event array for epoll_wait )
 
 : EPOLL_CREATE
     ( size argument is ignored, but for compatibility with
-    older linux versions we give the size hint anyway )
+    older linux versions we give the correct size hint anyway
+    rather than just putting any nonzero value )
     1024 213 #SYSCALL1
 ;
 
@@ -177,7 +178,19 @@ to wake suspended tasks if their fds are ready everytime execution reaches it, a
 thread if there are no other runnable tasks to make sure we don't max out the CPU core Forth is running
 on if there's nothing to be done. )
 : WAKER
-    TODO" infinite loop of calling epoll_wait and yielding."
+    BEGIN
+        RUNNABLE_COUNT @d 1 == IF
+            SUSPENDED_LIST @d 0 == IF
+                r" WAKER: No remaining runnable or suspended tasks, exiting." PRINTLN EXIT
+            THEN
+            -1 ASYNCIO_EPOLL_WAIT
+        ELSE
+            0 ASYNCIO_EPOLL_WAIT
+        THEN
+
+        . ( placeholder: wake tasks if necessary )
+        YIELD
+    AGAIN
 ;
 
 ( Spawn a task that behaves asynchronously on IO, for stack effect see SPAWN_TASK in <stdco.f>. )

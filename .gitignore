@@ -1,5 +1,6 @@
-Artefacts/
-Backups/
+Artefacts/*
+Backups/*
 Source/core/bootstrap.f
 *.gz
 *.tar
+*.fif
