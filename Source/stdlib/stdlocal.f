@@ -174,9 +174,10 @@ colon definitions. )
     THEN
 ; IMMEDIATE
 
-( Parse and create args until '\', same as calling arg: separately for each word.
-Note that this should be called only *immediately after* FUNCTION because it depends on the code body of the word 
-being empty. )
+( Parse and create args until '\', same as calling arg: separately for each word. Note that just like calling arg:
+partway through a definition, calling `\` later means the emitted initializiation code will be emitted later, so if
+you need to reorganize arguments first or do something with normal stack semantics then write `\ arg1 arg2 \` *after*
+that. )
 : \
     WORD DUP r" \" STRCMP IF
         POP

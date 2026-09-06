@@ -32,7 +32,6 @@ fds for any operation that normally could block. )
 ( since these are stdlib modules we already have their functions,
 reincluding them just serves to give us their macros too )
 INCLUDE ./stdlib/stdexcept.f
-INCLUDE ./stdlib/stdslab.f
 INCLUDE ./stdlib/stdco.f
 
 ( exit if macros are already defined [ you can do FORGET EXTASYNCIO_M POP to include them again ] )
@@ -125,16 +124,43 @@ FUNCTION ASYNCIO_ONKILL { task_entry }
 
     ( since the task died the entry is no longer valid,
     note that we don't close the fd, that's the job of the task,
-    and there are plenty of reason you'd want a task that died to
-    keep the fd around, such as because *it doesn't need to own it* )
+    and there are plenty of reasons you'd want a task that died to
+    keep the fd around, such as because *it doesn't need to own the fd* )
     INVALID task_entry !b
 ENDFUNC
 
-( r | fd events -C- :; Call epoll_ctl with EPOLL_CTL_MOD or EPOLL_CTL_ADD with given fd and events on the control
-flow stack. )
-: ASYNCIO_ONSUSPEND
-    TODO" register or rearm an fd with epoll_ctl, if there is a *different* fd already registered, first get rid of that one"
-;
+( r | fd events -C- :; Mark a task as waiting on a set of events from a particular fd, internally calls epoll_ctl
+with EPOLL_CTL_ADD, EPOLL_CTL_DEL, or EPOLL_CTL_MOD to accomplish this. )
+FUNCTION ASYNCIO_ONSUSPEND
+    CURR_TASK @d TASKID ENTRY_SIZE ENTRY_ARR @d INDEX
+    ( implicit EPOLLONESHOT for all fds since this library requires it )
+    C> C> EPOLLONESHOT |
+    \ events fd task_entry \
+
+    ( set up events )
+    events PEEK EPOLL_EVENT_CTL @d epoll_event.events FIELD !d
+    CURR_TASK @d EPOLL_EVENT_CTL @d epoll_event.data FIELD !q
+
+    ( positive state values mean the fd is relevant,
+    negative mean there is no currently registered fd. )
+    task_entry entry.state FIELD @b +? IF
+        task_entry entry.fd FIELD @d fd == IF
+            ( if fds are equal it means we can rearm that one )
+            fd EPOLL_CTL_MOD ASYNCIO_EPOLL_CTL
+        ELSE
+            ( else we have to get rid of the old one and make a new one )
+            task_entry entry.fd FIELD @d EPOLL_CTL_DEL ASYNCIO_EPOLL_CTL
+            fd EPOLL_CTL_ADD ASYNCIO_EPOLL_CTL
+        THEN
+    ELSE
+        ( register new fd )
+        fd EPOLL_CTL_ADD ASYNCIO_EPOLL_CTL
+    THEN
+
+    ( update metadata for the task )
+    WAITING task_entry entry.state FIELD !b
+    fd task_entry entry.fd FIELD !d
+ENDFUNC
 
 ( A task that should run for the whole lifetime of a program using the async system, WAKER attempts
 to wake suspended tasks if their fds are ready everytime execution reaches it, and blocks the whole
