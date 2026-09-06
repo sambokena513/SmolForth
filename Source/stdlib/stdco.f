@@ -306,7 +306,7 @@ data structure mapping task pointers to their fds and have async IO functions ch
 set up the context so that inside it RUN_TASK called that task's entry point. )
 : RUN_TASK
     DYN_CATCH DUP IF ( nonzero value means it threw )
-        r" Uncaught exception in task with ID <" PRINT CURR_TASK @d PRINTNUM
+        r" Uncaught exception in task with ID <" PRINT CURR_TASK @d TASKID PRINTNUM
         r" > and exception value <" PRINT PRINTNUM r" >, killing task." PRINTLN
     ELSE
         POP
