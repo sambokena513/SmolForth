@@ -31,8 +31,9 @@ fds for any operation that normally could block. )
 
 ( since these are stdlib modules we already have their functions,
 reincluding them just serves to give us their macros too )
-INCLUDE ./stdlib/stdexcept.f
-INCLUDE ./stdlib/stdco.f
+INCLUDE stdlib/stdexcept.f
+INCLUDE stdlib/stdco.f
+INCLUDE stdlib/stdio.f
 
 ( exit if macros are already defined [ you can do FORGET EXTASYNCIO_M POP to include them again ] )
 POPBUFXT IFDEF EXTASYNCIO_M MACROS CREATE EXTASYNCIO_M
