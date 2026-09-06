@@ -25,7 +25,7 @@ fds for any operation that normally could block. )
     The onsuspend field is set to a function that takes an fd and events as args through the control-flow stack, and registers or rearms it with epoll_ctl, as well
     as setting its entry to be marked as waiting on that fd.
 
-    The onkill field is set to a nullary function that clears the task's metadata entry and calls epoll_ctl to remove the task's fd [ if there is one ] from the
+    The onkill field is set to a function that takes a task pointer and clears the task's metadata entry and calls epoll_ctl to remove the task's fd [ if there is one ] from the
     interest list.
 )
 
@@ -39,6 +39,7 @@ INCLUDE stdlib/stdio.f
 POPBUFXT IFDEF EXTASYNCIO_M MACROS CREATE EXTASYNCIO_M
 
 5 CONSTANT ENTRY_SIZE
+12 CONSTANT EPOLL_EVENT_SIZE
 65536 CONSTANT ENTRY_COUNT
 1024 CONSTANT MAXEVENTS
 
@@ -139,7 +140,7 @@ FUNCTION ASYNCIO_ONSUSPEND
     \ events fd task_entry \
 
     ( set up events )
-    events PEEK EPOLL_EVENT_CTL @d epoll_event.events FIELD !d
+    events EPOLL_EVENT_CTL @d epoll_event.events FIELD !d
     CURR_TASK @d EPOLL_EVENT_CTL @d epoll_event.data FIELD !q
 
     TRY
@@ -160,7 +161,7 @@ FUNCTION ASYNCIO_ONSUSPEND
         THEN
     CATCH ( since we allow arbitrary fds we have to handle ones that epoll doesn't allow )
         DUP EPERM == IF
-            POP RUNNABLENOFD task_entry entry.state !b
+            POP RUNNABLENOFD task_entry entry.state FIELD !b
             ( slightly weird here but we have to not only exit ASYNCIO_ONSUSPEND
             but also the task scheduler's SUSPEND so the task doesn't get unlinked )
             rSP@ 16 + rSP!
@@ -177,8 +178,9 @@ ENDFUNC
 to wake suspended tasks if their fds are ready everytime execution reaches it, and blocks the whole
 thread if there are no other runnable tasks to make sure we don't max out the CPU core Forth is running
 on if there's nothing to be done. )
-: WAKER
+FUNCTION WAKER { revents_len task entry }
     BEGIN
+        ( get ready tasks )
         RUNNABLE_COUNT @d 1 == IF
             SUSPENDED_LIST @d 0 == IF
                 r" WAKER: No remaining runnable or suspended tasks, exiting." PRINTLN EXIT
@@ -187,11 +189,24 @@ on if there's nothing to be done. )
         ELSE
             0 ASYNCIO_EPOLL_WAIT
         THEN
+        TO revents_len
 
-        . ( placeholder: wake tasks if necessary )
+        ( wake each ready task )
+        0 BEGIN
+        DUP revents_len > WHILE
+            DUP EPOLL_EVENT_SIZE EPOLL_EVENTS_WAIT @d INDEX
+            epoll_event.data FIELD @q TO task
+
+            task TASKID ENTRY_SIZE ENTRY_ARR @d INDEX
+            TO entry
+
+            RUNNABLE entry entry.state FIELD !b
+            task WAKE_TASK
+        REPEAT POP
+        
         YIELD
     AGAIN
-;
+ENDFUNC
 
 ( Spawn a task that behaves asynchronously on IO, for stack effect see SPAWN_TASK in <stdco.f>. )
 : ASYNC_SPAWN_TASK
