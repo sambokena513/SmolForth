@@ -4,7 +4,7 @@ INCLUDE extlib/extasyncio.f
     CORE_INIT 
     ASYNCIO_INIT
     r" Welcome to SmolForth!" PRINTLN
-    FALSE ['] INTERPRET LITERAL
+    FALSE ['] ASYNC_INTERPRET LITERAL
     ASYNC_START
     r" Shutting down..." PRINTLN
 ;

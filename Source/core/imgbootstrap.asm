@@ -454,7 +454,6 @@ db "WORD_START", 0
 
 ; WORD parses the next word in the TIB,
 ; and returns its image-relative address
-; TODO: fix this, it misparses on some inputs
 WORD_:
 call WORD_START
 .restart:

@@ -27,6 +27,10 @@ fds for any operation that normally could block. )
 
     The onkill field is set to a function that takes a task pointer and clears the task's metadata entry and calls epoll_ctl to remove the task's fd [ if there is one ] from the
     interest list.
+
+    Note; while this library serves to make waiting on an fd a first class concept, it *does not* handle how to free all resources associated with an fd when it closed,
+    or how to clear relevant metadata, it is thus the job of the task closing an fd to ensure that it gets removed from the interest list, and that no tasks' entries
+    will reference it anymore.
 )
 
 ( since these are stdlib modules we already have their functions,
@@ -83,10 +87,10 @@ ENDMACROS
 ( normal include guard )
 POPBUFXT IFDEF EXTASYNCIO_F CREATE EXTASYNCIO_F
 
-DWORD_T TMPVAR ENTRY_ARR
-DWORD_T TMPVAR EPFD
-DWORD_T QWORD_T + TMPVAR EPOLL_EVENT_CTL ( epoll_event struct for epoll_ctl )
-DWORD_T TMPVAR EPOLL_EVENTS_WAIT ( epoll_event array for epoll_wait )
+DWORD_T VARIABLE ENTRY_ARR
+DWORD_T VARIABLE EPFD
+DWORD_T QWORD_T + VARIABLE EPOLL_EVENT_CTL ( epoll_event struct for epoll_ctl )
+DWORD_T VARIABLE EPOLL_EVENTS_WAIT ( epoll_event array for epoll_wait )
 
 : EPOLL_CREATE
     ( size argument is ignored, but for compatibility with
@@ -131,8 +135,7 @@ FUNCTION ASYNCIO_ONKILL { task_entry }
     INVALID task_entry !b
 ENDFUNC
 
-( r | fd events -C- :; Mark a task as waiting on a set of events from a particular fd, internally calls epoll_ctl
-with EPOLL_CTL_ADD, EPOLL_CTL_DEL, or EPOLL_CTL_MOD to accomplish this. )
+( r | fd events -C- :; Mark a task as waiting on a set of events from a particular fd. )
 FUNCTION ASYNCIO_ONSUSPEND
     CURR_TASK @d TASKID ENTRY_SIZE ENTRY_ARR @d INDEX
     ( implicit EPOLLONESHOT for all fds since this library requires it )
@@ -202,6 +205,8 @@ FUNCTION WAKER { revents_len task entry }
 
             RUNNABLE entry entry.state FIELD !b
             task WAKE_TASK
+
+            1 +
         REPEAT POP
         
         YIELD
@@ -246,4 +251,107 @@ ENDFUNC
         INVALID OVER ENTRY_SIZE ENTRY_ARR @d INDEX !b
         1 +
     REPEAT POP
+;
+
+( Asynchronous IO functions. )
+
+( get the TIB macros )
+INCLUDE stdlib/stdinclude.f
+
+( ASYNC versions of all the functions related to INTERPRET, technically these
+make the language now self-hosting. )
+: ASYNC_REFILL
+    READTIB EAGAIN == IF
+        TIB buf.fd FIELD @d EPOLLIN >C >C SUSPEND TSELF
+    THEN
+;
+
+( A version of ABORT for ASYNC_INTERPRET, this removes the TIB fd
+from the epoll interest list first, and clears the current task's [ interpreter's ]
+async metadata entry too )
+: ASYNC_ABORT
+    TIB buf.fd FIELD @d EPOLL_CTL_DEL ASYNCIO_EPOLL_CTL
+    RUNNABLENOFD CURR_TASK @d TASKID
+    ENTRY_SIZE ENTRY_ARR @d INDEX !b
+    ABORT
+;
+
+: ASYNC_WORD_START
+    TIB_IDX BEGIN
+    DUP TIB_LEN > WHILE
+
+        DUP TIB + @b 32 ==
+        OVER TIB + @b 10 == |
+        IF
+            1 +
+        ELSE
+            EXIT
+        THEN
+
+    REPEAT
+    ( out of input )
+    aTIB_IDX !b
+
+    TIB_LEN 255 == IF
+        CLEAR
+    THEN
+
+    ASYNC_REFILL
+    TSELF ( retry )
+;
+
+: ASYNC_WORD
+    ASYNC_WORD_START ( start index is the start of the word )
+    BEGIN ( outer loop gives new input whenever we run out )
+        DUP BEGIN ( inner loop parses characters and returns if we find a word )
+        DUP TIB_LEN > WHILE
+            DUP TIB + @b 32 ==
+            OVER TIB + @b 10 == |
+            IF
+                0 OVER TIB + !b ( replace whitespace with nul delimiter )
+                1 + aTIB_IDX !b ( parsing should start after nul, not at it )
+                TIB + EXIT ( return start of word )
+            ELSE
+                1 +
+            THEN
+
+        REPEAT
+        aTIB_IDX !b
+
+        TIB_LEN 255 == IF
+            POP 0
+            CLEAR
+        THEN
+
+        ASYNC_REFILL
+    AGAIN
+;
+
+: ASYNC_INTERPRET
+    BEGIN
+        ASYNC_WORD
+        DUP NUMBER? -1 ( err ) == IF
+            ( normal word case )
+            POP
+            FIND DUP -1 == IF
+                POP /' " No such word." 10 ,b '/ ASYNC_ABORT
+            ELSE
+                STATE IF
+                    DUP 8 + @b 1 & IF
+                        EXECUTE
+                    ELSE
+                        ECR32
+                    THEN
+                ELSE
+                    EXECUTE
+                THEN
+            THEN
+        ELSE
+            ( number case )
+            NIP
+            STATE IF
+                COMPILE LITERAL
+            THEN
+        THEN
+    AGAIN
 ;

@@ -80,7 +80,7 @@ those'll be in extasyncio.f for example. Anyway, I'm gonna be working on this
 once more.
 
 -------------------------------------------------------------------------------
-STATE: OPEN/STARTED | PRIORITY: MEDIUM
+STATE: CLOSED | PRIORITY: N/A ( issue resolved )
 -------------------------------------------------------------------------------
 
 -------------------------------------------------------------------------------
