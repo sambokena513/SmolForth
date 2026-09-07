@@ -269,16 +269,21 @@ make the language now self-hosting. )
 ( A version of ABORT for ASYNC_INTERPRET, this removes the TIB fd
 from the epoll interest list first, and clears the current task's [ interpreter's ]
 async metadata entry too )
-: ASYNC_ABORT
-    TIB buf.fd FIELD @d EPOLL_CTL_DEL ASYNCIO_EPOLL_CTL
-    RUNNABLENOFD CURR_TASK @d TASKID
-    ENTRY_SIZE ENTRY_ARR @d INDEX !b
+FUNCTION ASYNC_ABORT { entry }
+    CURR_TASK @d TASKID
+    ENTRY_SIZE ENTRY_ARR @d INDEX TO entry
+
+    RUNNABLENOFD entry !b
+    entry entry.state FIELD @b +? IF
+        TIB buf.fd FIELD @d EPOLL_CTL_DEL ASYNCIO_EPOLL_CTL
+    THEN
+
     ABORT
-;
+ENDFUNC
 
 : ASYNC_WORD_START
-    TIB_IDX BEGIN
-    DUP TIB_LEN > WHILE
+    TIB_IDX 255 & BEGIN
+    DUP TIB_LEN 255 & > WHILE
 
         DUP TIB + @b 32 ==
         OVER TIB + @b 10 == |
@@ -292,7 +297,7 @@ async metadata entry too )
     ( out of input )
     aTIB_IDX !b
 
-    TIB_LEN 255 == IF
+    TIB_LEN 255 & 255 == IF
         CLEAR
     THEN
 
@@ -304,7 +309,7 @@ async metadata entry too )
     ASYNC_WORD_START ( start index is the start of the word )
     BEGIN ( outer loop gives new input whenever we run out )
         DUP BEGIN ( inner loop parses characters and returns if we find a word )
-        DUP TIB_LEN > WHILE
+        DUP TIB_LEN 255 & > WHILE
             DUP TIB + @b 32 ==
             OVER TIB + @b 10 == |
             IF
@@ -318,7 +323,7 @@ async metadata entry too )
         REPEAT
         aTIB_IDX !b
 
-        TIB_LEN 255 == IF
+        TIB_LEN 255 & 255 == IF
             POP 0
             CLEAR
         THEN
