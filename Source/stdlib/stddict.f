@@ -202,3 +202,30 @@ Note that because this is just another word and not an external debugger, this m
             8 +
     REPEAT POP
 ;
+
+( Given a string pointer, try to interpret that as one word. )
+: INTERP_WORD
+    DUP NUMBER? -1 ( err ) == IF
+        ( normal word case )
+        POP
+        FIND DUP -1 == IF
+            POP /' " No such word." 10 ,b '/ ABORT
+        ELSE
+            STATE IF
+                DUP 8 + @b 1 & IF
+                    EXECUTE
+                ELSE
+                    ECR32
+                THEN
+            ELSE
+                EXECUTE
+            THEN
+        THEN
+    ELSE
+        ( number case )
+        NIP
+        STATE IF
+            COMPILE LITERAL
+        THEN
+    THEN
+;

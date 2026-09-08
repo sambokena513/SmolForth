@@ -1,0 +1,71 @@
+( <extstruct.fm> :; This is a macro-only file that implements basic struct syntax. ) 
+
+( 
+    A struct is essentially a collection of words in this format:
+
+        - <name>
+        - <name>.<field>
+
+    Where <name> is the name of a struct, such as MyStruct, and <field> is the name of a field,
+    such as foo.
+    Writing the name of a struct on its own compiles to the *size* of that struct.
+    Writing <name>.<field> compiles to the *offset* for accessing that field.
+    You still have to manually dereference and apply the offset. 
+
+    Syntax:
+
+    STRUCT <name>
+        <size> <field>
+        <size> <field>
+        <size> <field>
+    ENDSTRUCT
+
+    Where <size> is either a numeric literal or word that pushes a number to the stack,
+    and <field> is the name of the new dictionary entry for the field.
+    Note that a struct may not reference its own size in its definition.
+)
+
+POPBUFXT IFDEF EXTSTRUCT_M MACROS CREATE EXTSTRUCT_M
+
+DWORD_T VARIABLE STRUCT_ENTRY ( dictionary entry for the struct we're currently compiling )
+DWORD_T VARIABLE STRUCT_OFFSET ( current offset )
+
+( Generate struct offsets. )
+: STRUCT
+    0 CONSTANT ( compile placeholder struct name )
+    LATEST STRUCT_ENTRY !d
+    0 STRUCT_OFFSET !d
+
+    ( sequentially compile pairs of words as struct offsets )
+    BEGIN
+    WORD DUP r" ENDSTRUCT" STRCMP ~ WHILE
+        ( we do this instead of using NUMBER? so that you can
+        use symbolic var sizes too )
+        INTERP_WORD
+
+        ( construct name, which is <structname> + "." + <fieldname> )
+        WNB STRUCT_ENTRY @d 9 + STRCPY
+        WNB r" ." STRCAT
+        WNB WORD STRCAT
+
+        ( set COMP_START for semicolon )
+        HERE aCOMP_START !d
+
+        ( compile as a constant )
+        STRUCT_OFFSET @d COMPILE LITERAL
+        ['] __CONSTANT LITERAL ECR32
+
+        ( finish definition )
+        COMPILE ; IMMEDIATE
+
+        ( increment current offset so the next field starts at the right spot )
+        STRUCT_OFFSET @d + STRUCT_OFFSET !d
+    REPEAT POP
+
+    ( patch the struct's entry to emit its own size )
+    STRUCT_OFFSET @d
+    STRUCT_ENTRY @d 4 + @d
+    __LITva !q
+;
+
+ENDMACROS

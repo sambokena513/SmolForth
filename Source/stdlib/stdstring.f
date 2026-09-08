@@ -1,22 +1,5 @@
 CLEAR WORD STDSTRING_F FIND ~ POPBUFXT EXEC_IF CREATE STDSTRING_F
 
-: STRLEN 
-    0 BEGIN
-        OVER @b
-    WHILE
-        1 + SWAP 1 + SWAP
-    REPEAT
-    NIP
-;
-: STRCPY
-    BEGIN
-    DUP @b WHILE
-        2DUP @b SWAP !b
-        1 + SWAP 1 + SWAP
-    REPEAT
-    POP
-    0 SWAP !b
-;
 : STRCMP
     BEGIN
     DUP @b WHILE
@@ -39,6 +22,30 @@ CREATE )
 ( <stdstring.f> :; This file implements string handling functions as well as comments.
 This description of it is later in the file than for other parts of the stdlib because once again,
 this *is* the file that implements them, and we cannot use comments until they exist. )
+
+: STRLEN ( str -- len )
+    0 BEGIN
+        OVER @b
+    WHILE
+        1 + SWAP 1 + SWAP
+    REPEAT
+    NIP
+;
+
+: STRCPY ( dest source -- )
+    BEGIN
+    DUP @b WHILE
+        2DUP @b SWAP !b
+        1 + SWAP 1 + SWAP
+    REPEAT
+    POP
+    0 SWAP !b
+;
+
+: STRCAT ( dest source -- )
+    SWAP DUP STRLEN + SWAP
+    STRCPY
+;
 
 ( Get one character from the terminal input buffer and advance the parsing cursor. )
 : GETCHAR
