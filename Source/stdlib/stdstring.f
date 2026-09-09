@@ -47,6 +47,17 @@ this *is* the file that implements them, and we cannot use comments until they e
     STRCPY
 ;
 
+: MEMCPY ( count dest source -- )
+    ROT ( count dest source -> dest source count )
+    BEGIN
+    DUP 0 <> WHILE ( while count <> 0 )
+        -ROT ( dest source count -> count dest source )
+        2DUP @b SWAP !b ( move a byte from source to dest )
+        1 + SWAP 1 + SWAP ( inc source and dest )
+        ROT -1 + ( inc count )
+    REPEAT 2POP POP
+;
+
 ( Get one character from the terminal input buffer and advance the parsing cursor. )
 : GETCHAR
     TIB_IDX TIB_LEN == IF

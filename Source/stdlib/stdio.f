@@ -189,17 +189,15 @@ CLEAR WORD STDIO_F FIND ~ POPBUFXT EXEC_IF CREATE STDIO_F
 if you want to invoke a non-throwing syscall manually use one of the SYSCALLn wrappers,
 and if you want to extend the library with new IO functions use one of the #SYSCALLn wrappers. )
 
-: READ 0 #SYSCALL3 ;
-: WRITE 1 #SYSCALL3 ;
-: OPENAT 257 #SYSCALL4 ;
-( Instead of directly invoking sys_open since it's a bit old now
-we just call sys_openat while specifying that the path is relative to the CWD. )
-: OPEN AT_FDCWD OPENAT ; 
-: CLOSE 3 #SYSCALL1 ;
+: READ 0 #SYSCALL3 ; ( count buf fd -- )
+: WRITE 1 #SYSCALL3 ; ( count buf fd -- )
+: OPENAT 257 #SYSCALL4 ; ( mode flags path dirfd -- )
+: OPEN AT_FDCWD OPENAT ; ( mode flags path -- )
+: CLOSE 3 #SYSCALL1 ; ( fd -- )
 
-DWORD_T VARIABLE FDBUF ( for use in WRITE_FULL and READ_FULL, DWORD_T since on Linux file descriptors are 32 bits. )
+DWORD_T TMPVAR FDBUF ( for use in WRITE_FULL and READ_FULL, DWORD_T since on Linux file descriptors are 32 bits. )
 
-( WRITE_FULL and READ_FULL respectively are wrappers around WRITE and READ that guarantee that all bytes requested where read/written on success.
+( WRITE_FULL and READ_FULL respectively are wrappers around WRITE and READ that guarantee that all bytes requested were read/written on success.
 They return nothing on success, and throw on failure. Note that a failure does not mean no IO was performed, it could also mean a partial read or write happened. )
 : WRITE_FULL
     FDBUF !d BEGIN
@@ -225,8 +223,8 @@ They return nothing on success, and throw on failure. Note that a failure does n
     2POP
 ;
 
-21 VARIABLE NUMBUF
-BYTE_T VARIABLE CHARBUF
+21 TMPVAR NUMBUF
+BYTE_T TMPVAR CHARBUF
 
 : PRINT DUP STRLEN SWAP BASE + STDOUT WRITE_FULL ;
 : PUTCHAR CHARBUF !b 1 CHARBUF BASE + STDOUT WRITE_FULL ;
