@@ -5,32 +5,38 @@ fds for any operation that normally could block. )
 (
     Architecture:
 
-    The core idea behind this library is that asynchronous IO operations register or rearm fds with epoll_ctl before performing the nonblocking operation, and if it returned EAGAIN,
+    The core idea behind this library is that asynchronous IO operations register fds with epoll_ctl before performing the nonblocking operation, and if it returned EAGAIN,
     then they call SUSPEND. Then a privileged WAKER task that owns the epfd calls epoll_wait every time execution reaches it, with a timeout of 0 if there are other runnable tasks,
     and a timeout of -1 if there are not. If there are no other runnable tasks *and* no suspended tasks, it exits.
+
+    This library does not aim for perfect performance, especially as it is not a resource manager, merely a task waker,
+    and as such we always register an fd on SUSPEND, and remove on END_TASK or WAKE_TASK. This gives us the useful
+    invariant that an fd is only in the interest list [ and therefore owned by the async library ] when a task is not
+    runnable, letting running tasks arbitrary call synchronous IO, close and re-open fds, and change state without causing
+    the interest list to become out of sync with the program state.
+
+    Note that while all state should be dealt with normally by the library in most cases, in the case of remotely messing with the fds
+    of a suspended task from a different one, you'll need to manually preserve our invariants, namely that if an fd is no longer in the
+    interest list, it should also be removed from the fd field of the task, and the task should be either woken or killed.
 
     We accomplish these things by giving each possible task an index in an array with 65536 elements.
     Each entry is 40 bits, the first 8 bits are the task's state:
 
-        -2 = Runnable, no fd yet.
-        -1 = Invalid
-        0 = Runnable, fd registered
-        1 = Waiting on fd
+        -1 = Runnable
+        0 = Waiting on fd
+
+        Other values reserved for future extensions.
 
     And the 32-bit field is an fd the task is waiting on, its value is irrelevant if the first field is negative.
 
     To ensure these fields get properly updated, we provide a wrapper over SPAWN_TASK called ASYNC_SPAWN_TASK that sets the new task's onsuspend and onkill fields
-    as well as initializing its entry to be -2 for RUNNABLENOFD.
+    as well as initializing its entry to be 0 for RUNNABLE.
 
     The onsuspend field is set to a function that takes an fd and events as args through the control-flow stack, and registers or rearms it with epoll_ctl, as well
     as setting its entry to be marked as waiting on that fd.
 
     The onkill field is set to a function that takes a task pointer and clears the task's metadata entry and calls epoll_ctl to remove the task's fd [ if there is one ] from the
     interest list.
-
-    Note; while this library serves to make waiting on an fd a first class concept, it *does not* handle how to free all resources associated with an fd when it closed,
-    or how to clear relevant metadata, it is thus the job of the task closing an fd to ensure that it gets removed from the interest list, and that no tasks' entries
-    will reference it anymore.
 )
 
 ( since these are stdlib modules we already have their functions,
@@ -53,10 +59,8 @@ POPBUFXT IFDEF EXTASYNCIO_M MACROS CREATE EXTASYNCIO_M
 0 CONSTANT epoll_event.events
 4 CONSTANT epoll_event.data
 
--2 CONSTANT RUNNABLENOFD ( initial state for an entry )
--1 CONSTANT INVALID ( no task )
-0 CONSTANT RUNNABLE ( means that the fd field is valid but needs to be rearmed )
-1 CONSTANT WAITING ( fd is active and task is waiting on it )
+-1 CONSTANT RUNNABLE ( means that the fd field is valid but needs to be rearmed )
+0 CONSTANT WAITING ( fd is active and task is waiting on it )
 
 ( epoll_ctl operations )
 1 CONSTANT EPOLL_CTL_ADD
@@ -127,44 +131,23 @@ FUNCTION ASYNCIO_ONKILL { task_entry }
         task_entry entry.fd FIELD @d
         EPOLL_CTL_DEL ASYNCIO_EPOLL_CTL
     THEN
-
-    ( since the task died the entry is no longer valid,
-    note that we don't close the fd, that's the job of the task,
-    and there are plenty of reasons you'd want a task that died to
-    keep the fd around, such as because *it doesn't need to own the fd* )
-    INVALID task_entry !b
 ENDFUNC
 
 ( r | fd events -C- :; Mark a task as waiting on a set of events from a particular fd. )
 FUNCTION ASYNCIO_ONSUSPEND
     CURR_TASK @d TASKID ENTRY_SIZE ENTRY_ARR @d INDEX
-    ( implicit EPOLLONESHOT for all fds since this library requires it )
-    C> C> EPOLLONESHOT |
+    C> C>
     \ events fd task_entry \
 
     ( set up events )
     events EPOLL_EVENT_CTL @d epoll_event.events FIELD !d
     CURR_TASK @d EPOLL_EVENT_CTL @d epoll_event.data FIELD !q
 
-    TRY
-        ( positive state values mean the fd is relevant,
-        negative mean there is no currently registered fd. )
-        task_entry entry.state FIELD @b +? IF
-            task_entry entry.fd FIELD @d fd == IF
-                ( if fds are equal it means we can rearm that one )
-                fd EPOLL_CTL_MOD ASYNCIO_EPOLL_CTL
-            ELSE
-                ( else we have to get rid of the old one and make a new one )
-                task_entry entry.fd FIELD @d EPOLL_CTL_DEL ASYNCIO_EPOLL_CTL
-                fd EPOLL_CTL_ADD ASYNCIO_EPOLL_CTL
-            THEN
-        ELSE
-            ( register new fd )
-            fd EPOLL_CTL_ADD ASYNCIO_EPOLL_CTL
-        THEN
-    CATCH ( since we allow arbitrary fds we have to handle ones that epoll doesn't allow )
-        DUP EPERM == IF
-            POP RUNNABLENOFD task_entry entry.state FIELD !b
+    TRY ( register fd )
+        fd EPOLL_CTL_ADD ASYNCIO_EPOLL_CTL
+    CATCH
+        DUP EPERM == IF ( if a task tries to wait on something that is always ready, don't suspend it )
+            POP RUNNABLE task_entry entry.state FIELD !b
             ( slightly weird here but we have to not only exit ASYNCIO_ONSUSPEND
             but also the task scheduler's SUSPEND so the task doesn't get unlinked )
             rSP@ 16 + rSP!
@@ -203,6 +186,8 @@ FUNCTION WAKER { revents_len task entry }
             task TASKID ENTRY_SIZE ENTRY_ARR @d INDEX
             TO entry
 
+            ( deregister fd task was waiting on and link back into runnable tasks )
+            entry entry.fd FIELD @d EPOLL_CTL_DEL ASYNCIO_EPOLL_CTL
             RUNNABLE entry entry.state FIELD !b
             task WAKE_TASK
 
@@ -216,7 +201,7 @@ ENDFUNC
 ( Spawn a task that behaves asynchronously on IO, for stack effect see SPAWN_TASK in <stdco.f>. )
 : ASYNC_SPAWN_TASK
     SPAWN_TASK DUP -1 == IF EXIT THEN ( spawn the task )
-    RUNNABLENOFD OVER TASKID ENTRY_SIZE ENTRY_ARR @d INDEX !b ( task starts as runnable with no fd registered )
+    RUNNABLE OVER TASKID ENTRY_SIZE ENTRY_ARR @d INDEX !b ( task starts as runnable with no fd registered )
 
     ( set callbacks )
     ['] ASYNCIO_ONKILL LITERAL OVER task.onkill FIELD !d
@@ -244,13 +229,6 @@ ENDFUNC
     pALLOC DUP -1 == IF
         POP EXC_NOMEM THROW
     THEN ENTRY_ARR !d
-
-    ( initialize task entries )
-    0 BEGIN
-    DUP ENTRY_COUNT > WHILE
-        INVALID OVER ENTRY_SIZE ENTRY_ARR @d INDEX !b
-        1 +
-    REPEAT POP
 ;
 
 ( Asynchronous IO functions. )
@@ -265,21 +243,6 @@ make the language now self-hosting. )
         TIB buf.fd FIELD @d EPOLLIN >C >C SUSPEND TSELF
     THEN
 ;
-
-( A version of ABORT for ASYNC_INTERPRET, this removes the TIB fd
-from the epoll interest list first, and clears the current task's [ interpreter's ]
-async metadata entry too )
-FUNCTION ASYNC_ABORT { entry }
-    CURR_TASK @d TASKID
-    ENTRY_SIZE ENTRY_ARR @d INDEX TO entry
-
-    RUNNABLENOFD entry !b
-    entry entry.state FIELD @b +? IF
-        TIB buf.fd FIELD @d EPOLL_CTL_DEL ASYNCIO_EPOLL_CTL
-    THEN
-
-    ABORT
-ENDFUNC
 
 : ASYNC_WORD_START
     TIB_IDX 255 & BEGIN
@@ -339,7 +302,7 @@ ENDFUNC
             ( normal word case )
             POP
             FIND DUP -1 == IF
-                POP /' " No such word." 10 ,b '/ ASYNC_ABORT
+                POP /' " No such word." 10 ,b '/ ABORT
             ELSE
                 STATE IF
                     DUP 8 + @b 1 & IF
