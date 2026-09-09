@@ -1,4 +1,4 @@
-INCLUDE extlib/extasyncio.f
+<INCLUDE> Source/extlib/extasyncio.f
 
 : MAIN
     CORE_INIT 

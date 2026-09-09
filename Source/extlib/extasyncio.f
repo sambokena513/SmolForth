@@ -41,9 +41,9 @@ fds for any operation that normally could block. )
 
 ( since these are stdlib modules we already have their functions,
 reincluding them just serves to give us their macros too )
-INCLUDE stdlib/stdexcept.f
-INCLUDE stdlib/stdco.f
-INCLUDE stdlib/stdio.f
+<INCLUDE> Source/stdlib/stdexcept.f
+<INCLUDE> Source/stdlib/stdco.f
+<INCLUDE> Source/stdlib/stdio.f
 
 ( exit if macros are already defined [ you can do FORGET EXTASYNCIO_M POP to include them again ] )
 POPBUFXT IFDEF EXTASYNCIO_M MACROS CREATE EXTASYNCIO_M
@@ -234,7 +234,7 @@ ENDFUNC
 ( Asynchronous IO functions. )
 
 ( get the TIB macros )
-INCLUDE stdlib/stdinclude.f
+<INCLUDE> Source/stdlib/stdinclude.f
 
 ( ASYNC versions of all the functions related to INTERPRET, technically these
 make the language now self-hosting. )
