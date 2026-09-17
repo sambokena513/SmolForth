@@ -229,3 +229,11 @@ Note that because this is just another word and not an external debugger, this m
         THEN
     THEN
 ;
+
+( WORD, but it skips '(' comments by executing them. )
+: WORD_NOT_COMMENT ( -- strptr )
+    BEGIN
+    WORD DUP r" (" STRCMP WHILE
+        INTERP_WORD
+    REPEAT
+;

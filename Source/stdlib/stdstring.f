@@ -20,7 +20,7 @@ CREATE )
 ( Dependencies: bootstrap.f )
 
 ( <stdstring.f> :; This file implements string handling functions as well as comments.
-This description of it is later in the file than for other parts of the stdlib because once again,
+This description of it is later in the file than for other parts of the stdlib because
 this *is* the file that implements them, and we cannot use comments until they exist. )
 
 : STRLEN ( str -- len )
@@ -54,7 +54,7 @@ this *is* the file that implements them, and we cannot use comments until they e
         -ROT ( dest source count -> count dest source )
         2DUP @b SWAP !b ( move a byte from source to dest )
         1 + SWAP 1 + SWAP ( inc source and dest )
-        ROT -1 + ( inc count )
+        ROT -1 + ( dec count )
     REPEAT 2POP POP
 ;
 

@@ -38,7 +38,7 @@ DWORD_T VARIABLE STRUCT_OFFSET ( current offset )
 
     ( sequentially compile pairs of words as struct offsets )
     BEGIN
-    WORD DUP r" ENDSTRUCT" STRCMP ~ WHILE
+    WORD_NOT_COMMENT DUP r" ENDSTRUCT" STRCMP ~ WHILE
         ( we do this instead of using NUMBER? so that you can
         use symbolic var sizes too )
         INTERP_WORD
@@ -46,7 +46,7 @@ DWORD_T VARIABLE STRUCT_OFFSET ( current offset )
         ( construct name, which is <structname> + "." + <fieldname> )
         WNB STRUCT_ENTRY @d 9 + STRCPY
         WNB r" ." STRCAT
-        WNB WORD STRCAT
+        WNB WORD_NOT_COMMENT STRCAT
 
         ( set COMP_START for semicolon )
         HERE aCOMP_START !d
