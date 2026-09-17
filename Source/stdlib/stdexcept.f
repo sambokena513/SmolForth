@@ -109,8 +109,8 @@ CREATE ENDTRY ALIAS THEN IMMEDIATE
 : THROW
     ( if eSP_BASE + 16 is greater than eSP we know that a pop would underflow the stack. )
     eSP @d CTX @d ctx.eSP_BASE FIELD @d 16 + > IF
-        r" Uncaught Exception: install an exception handler or exit the process,
-           Continuing may cause memory corruption." PANIC
+        r" Install an exception handler or exit the process, Continuing may cause memory corruption."
+        r" UNCAUGHT EXCEPTION" PANIC
     THEN
 
     ( we juggle the exception value through the control flow stack so it isn't lost when we set dSP )
