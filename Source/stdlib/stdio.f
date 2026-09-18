@@ -160,6 +160,11 @@ CLEAR WORD STDIO_M FIND ~ POPBUFXT EXEC_IF MACROS CREATE STDIO_M
 
 -100 CONSTANT AT_FDCWD
 
+( fcntl flags )
+3 CONSTANT F_GETFL
+4 CONSTANT F_SETFL
+
+( standard streams )
 0 CONSTANT STDIN
 1 CONSTANT STDOUT
 2 CONSTANT STDERR
@@ -189,11 +194,12 @@ CLEAR WORD STDIO_F FIND ~ POPBUFXT EXEC_IF CREATE STDIO_F
 if you want to invoke a non-throwing syscall manually use one of the SYSCALLn wrappers,
 and if you want to extend the library with new IO functions use one of the #SYSCALLn wrappers. )
 
-: READ 0 #SYSCALL3 ; ( count buf fd -- )
-: WRITE 1 #SYSCALL3 ; ( count buf fd -- )
-: OPENAT 257 #SYSCALL4 ; ( mode flags path dirfd -- )
-: OPEN AT_FDCWD OPENAT ; ( mode flags path -- )
-: CLOSE 3 #SYSCALL1 ; ( fd -- )
+: READ 0 #SYSCALL3 ; ( count buf fd -- read )
+: WRITE 1 #SYSCALL3 ; ( count buf fd -- written )
+: OPENAT 257 #SYSCALL4 ; ( mode flags path dirfd -- fd )
+: OPEN AT_FDCWD OPENAT ; ( mode flags path -- fd )
+: CLOSE 3 #SYSCALL1 ; ( fd -- 0 )
+: FCNTL 72 #SYSCALL3 ; ( arg cmd fd -- result )
 
 DWORD_T TMPVAR FDBUF ( for use in WRITE_FULL and READ_FULL, DWORD_T since on Linux file descriptors are 32 bits. )
 
